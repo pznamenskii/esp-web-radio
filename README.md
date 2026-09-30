@@ -378,4 +378,4 @@ Tracked in [`TODO.md`](TODO.md).
 
 ## LICENSE
 MDI WebFonts: Apache 2.0
-FFT Vizualizer: MIT, code borrowed from @anod https://github.com/anod/esp32-s3-box-3b-winamp-radio
+FFT Vizualizer: MIT, code borrowed from [anod](https://github.com/anod) https://github.com/anod/esp32-s3-box-3b-winamp-radio

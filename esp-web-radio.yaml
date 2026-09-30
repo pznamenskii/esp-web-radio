@@ -103,7 +103,7 @@ api:
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+#    password: !secret ota_password
 
 # Web interface (control entities + REST API). Edit the presets here: the
 # "Preset N Name / Preset N URL" text fields are shown as editable inputs.
