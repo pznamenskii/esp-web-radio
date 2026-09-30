@@ -65,18 +65,18 @@ psram:
 # Modular configuration via packages (see ./packages/*.yaml)
 # ---------------------------------------------------------------------------
 packages:
-  hardware:       !include packages/esp-web-radio-hardware.yaml
-  audio:          !include packages/esp-web-radio-audio.yaml
+  hardware:       !include esp-web-radio/packages/esp-web-radio-hardware.yaml
+  audio:          !include esp-web-radio/packages/esp-web-radio-audio.yaml
 #  radio_core:     !include packages/esp-web-radio-radio_core.yaml
-  homeassistant:  !include packages/esp-web-radio-homeassistant.yaml
-  offline_stations: !include packages/esp-web-radio-offline_stations.yaml
-  lvgl_ui:        !include packages/esp-web-radio-lvgl_ui.yaml
-  fonts:          !include packages/display-fonts.yaml
-  colors:         !include packages/common-colors.yaml
-  theme:          !include packages/lvgl_theme.yaml
-  page_now_playing: !include packages/esp-web-radio-page_now_playing.yaml
-  page_stations:  !include packages/esp-web-radio-page_stations.yaml
-  page_ap_setup: !include packages/esp-web-radio-page_ap_setup.yaml
+  homeassistant:  !include esp-web-radio/packages/esp-web-radio-homeassistant.yaml
+  offline_stations: !include esp-web-radio/packages/esp-web-radio-offline_stations.yaml
+  lvgl_ui:        !include esp-web-radio/packages/esp-web-radio-lvgl_ui.yaml
+  fonts:          !include esp-web-radio/packages/display-fonts.yaml
+  colors:         !include esp-web-radio/packages/common-colors.yaml
+  theme:          !include esp-web-radio/packages/lvgl_theme.yaml
+  page_now_playing: !include esp-web-radio/packages/esp-web-radio-page_now_playing.yaml
+  page_stations:  !include esp-web-radio/packages/esp-web-radio-page_stations.yaml
+  page_ap_setup: !include esp-web-radio/packages/esp-web-radio-page_ap_setup.yaml
 #  swipe:         !include packages/swipe_navigation.yaml
 
 # ---------------------------------------------------------------------------
