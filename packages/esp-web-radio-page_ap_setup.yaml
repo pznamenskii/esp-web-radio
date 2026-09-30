@@ -1,0 +1,114 @@
+# ==============================================================================
+# page_ap_setup.yaml - AP mode / WiFi setup page (landscape 480x320)
+#
+# Shown by `script.enter_ap_mode` when the fallback AP + captive portal become
+# active (`wifi.ap_active`). `skip: true` keeps it out of swipe/prev-next
+# navigation. Two-column layout: info panel (SSID / password / URL) on the left,
+# scannable WiFi-connection QR (WIFI: string from ap_ssid/ap_password) on the
+# right. Uses theme styles/substitutions
+# from lvgl_theme.yaml and text_wifi/text_wifi_cog substitutions from
+# display-fonts.yaml (cross-package substitutions are already used elsewhere in
+# this project).
+# ==============================================================================
+
+lvgl:
+  pages:
+    - id: page_ap_setup
+      skip: true                 # NOT reachable via lvgl.page.next/previous
+      scrollbar_mode: "OFF"
+      widgets:
+        - obj:
+            id: ap_card
+            styles: card
+            x: 0
+            y: 0
+            width: 480
+            height: 320
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: ap_lbl_title
+                  styles: text_title
+                  align: TOP_MID
+                  y: 20
+                  width: 100%
+                  text: "Требуется настройка WiFi"
+                  text_align: CENTER
+              - label:
+                  id: ap_lbl_icon
+                  align: TOP_MID
+                  y: 54
+                  text: "${text_wifi_cog}"      # mdi-wifi-cog, menu24 font
+                  text_font: ${font_icon}
+                  text_color: ${color_accent}
+              - label:
+                  id: ap_lbl_step1
+                  styles: text_body
+                  align: TOP_MID
+                  y: 92
+                  width: 100%
+                  text: "Не могу подключиться к WiFi!"
+                  text_align: CENTER
+                  long_mode: WRAP
+              - label:
+                  id: ap_lbl_step2
+                  styles: text_muted
+                  align: TOP_MID
+                  y: 114
+                  width: 100%
+                  text: "Подключись к точке доступа для настройки нового подключения"
+                  text_align: CENTER
+                  long_mode: WRAP
+              - obj:
+                  id: ap_info_panel
+                  styles: panel
+                  x: 24
+                  y: 148
+                  width: 250
+                  height: 128
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: ap_lbl_ssid
+                        styles: text_body
+                        x: 16
+                        y: 8
+                        width: 220
+                        text: "Сеть:  ${ap_ssid}"
+                        text_align: LEFT
+                        long_mode: CLIP
+                    - label:
+                        id: ap_lbl_password
+                        styles: text_muted
+                        x: 16
+                        y: 40
+                        width: 220
+                        text: "Пароль: ${ap_password_display}"
+                        text_align: LEFT
+                        long_mode: CLIP
+                    - label:
+                        id: ap_lbl_url
+                        styles: text_small
+                        x: 16
+                        y: 72
+                        width: 220
+                        text: "После подключения, перейди на ${ap_url} для окончания настройки"
+                        text_align: LEFT
+                        long_mode: CLIP
+              - qrcode:
+                  id: ap_qr
+                  x: 288
+                  y: 152
+                  size: 120
+                  text: "WIFI:T:WPA;S:${ap_ssid};P:${ap_password};;"
+                  dark_color: ${color_text_primary}   # modules = light
+                  light_color: ${color_panel}         # background = dark
+                  clickable: false
+              - label:
+                  id: ap_lbl_hint
+                  styles: text_small
+                  align: BOTTOM_MID
+                  y: -18
+                  text: "Страница закроется автоматически после успешного подключения к WiFi."

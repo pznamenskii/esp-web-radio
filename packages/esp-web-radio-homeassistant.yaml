@@ -1,0 +1,455 @@
+# ==============================================================================
+# homeassistant.yaml - time source, status sensors, and Home Assistant exposure
+#
+# The native API (with encryption) is configured in the main file, which exposes
+# the media_player, the Radio Station `select`, the "Now Playing" text sensor
+# and the DAC mute switch to Home Assistant automatically.
+#
+# Every on_value handler here targets widgets of the Now Playing page
+# (page_now_playing) - see esp-web-radio-page_now_playing.yaml for geometry.
+# ==============================================================================
+
+# ---------------------------------------------------------------------------
+# Time sources for the on-screen clock (`lbl_time`): HA time (`esptime`) while
+# the API is connected, otherwise local NTP time (`wifi_time`) while WiFi is up.
+# Source selection lives in the `update_clock` script (see README).
+# ---------------------------------------------------------------------------
+time:
+  - platform: homeassistant
+    id: esptime
+    timezone: !secret timezone
+    on_time:
+      - seconds: 0
+        then:
+          - script.execute: update_clock
+
+  - platform: sntp
+    id: wifi_time
+    timezone: !secret timezone
+    servers:
+      - "pool.ntp.org"
+      - "time.google.com"
+    on_time_sync:
+      - script.execute: update_clock
+    on_time:
+      - seconds: 0
+        then:
+          - script.execute: update_clock
+
+# ---------------------------------------------------------------------------
+# Network status sensors, bound to the Settings page labels.
+# ---------------------------------------------------------------------------
+text_sensor:
+#  - platform: wifi_info
+#    ip_address:
+#      id: wifi_ip
+#      name: "IP Address"
+#      internal: true
+#      on_value:
+#        - lvgl.label.update:
+#            id: settings_ip_value
+#            text: !lambda 'return ("IP: " + id(wifi_ip).state).c_str();'
+
+  # Human-readable uptime, driven from the uptime sensor below.
+#  - platform: template
+#    id: uptime_human
+#    name: "Uptime"
+#    internal: true
+#    update_interval: never
+#    on_value:
+#      - lvgl.label.update:
+#          id: settings_uptime_value
+#          text: !lambda 'return id(uptime_human).state.c_str();'
+# ──────────────────────────────────────
+# HA sensors: station URLs + player state + now playing
+# ──────────────────────────────────────
+  # URL станций (для play_media; используются кнопками станций mp_btn_prev/next)
+  - platform: homeassistant
+    id: station_1_url
+    entity_id: sensor.radio_station_1_url
+
+  - platform: homeassistant
+    id: station_2_url
+    entity_id: sensor.radio_station_2_url
+
+  - platform: homeassistant
+    id: station_3_url
+    entity_id: sensor.radio_station_3_url
+
+  - platform: homeassistant
+    id: station_4_url
+    entity_id: sensor.radio_station_4_url
+
+  # URL слотов 5..12 (internal, по аналогии с именами): зарезервированы, чтобы
+  # play_station (HA-ветка) мог ссылаться на них. Пока в HA нет сущностей
+  # sensor.radio_station_5_url..12_url — состояние unknown; расширение списка
+  # = добавление строк в ha_template_sensors.yaml (+ offline_stations.yaml) и
+  # поднятие station_count — без правок в этом файле.
+  - platform: homeassistant
+    id: station_5_url
+    entity_id: sensor.radio_station_5_url
+    internal: true
+
+  - platform: homeassistant
+    id: station_6_url
+    entity_id: sensor.radio_station_6_url
+    internal: true
+
+  - platform: homeassistant
+    id: station_7_url
+    entity_id: sensor.radio_station_7_url
+    internal: true
+
+  - platform: homeassistant
+    id: station_8_url
+    entity_id: sensor.radio_station_8_url
+    internal: true
+
+  - platform: homeassistant
+    id: station_9_url
+    entity_id: sensor.radio_station_9_url
+    internal: true
+
+  - platform: homeassistant
+    id: station_10_url
+    entity_id: sensor.radio_station_10_url
+    internal: true
+
+  - platform: homeassistant
+    id: station_11_url
+    entity_id: sensor.radio_station_11_url
+    internal: true
+
+  - platform: homeassistant
+    id: station_12_url
+    entity_id: sensor.radio_station_12_url
+    internal: true
+
+  # Имена станций -> слоты Stations page (st_lbl_N / st_btn_N через единый
+  # скрипт refresh_stations в esp-web-radio-lvgl_ui.yaml).
+  # Слоты 5..12 объявлены заранее (internal): пока в HA нет сущностей
+  # sensor.radio_station_5_name..12_name, их состояние unknown (has_state()==false)
+  # и слоты остаются скрытыми. Чтобы расширить список, добавьте строки в
+  # ha_template_sensors.yaml / offline_stations.yaml — страница обновится сама.
+  - platform: homeassistant
+    id: station_1_name
+    entity_id: sensor.radio_station_1_name
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_2_name
+    entity_id: sensor.radio_station_2_name
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_3_name
+    entity_id: sensor.radio_station_3_name
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_4_name
+    entity_id: sensor.radio_station_4_name
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_5_name
+    entity_id: sensor.radio_station_5_name
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_6_name
+    entity_id: sensor.radio_station_6_name
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_7_name
+    entity_id: sensor.radio_station_7_name
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_8_name
+    entity_id: sensor.radio_station_8_name
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_9_name
+    entity_id: sensor.radio_station_9_name
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_10_name
+    entity_id: sensor.radio_station_10_name
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_11_name
+    entity_id: sensor.radio_station_11_name
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_12_name
+    entity_id: sensor.radio_station_12_name
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  # Состояние плеера -> иконка play/pause на центральной кнопке
+  - platform: homeassistant
+    id: player_state
+    entity_id: media_player.esp_media_player
+    on_value:
+      - if:
+          condition:
+            lambda: return x == "playing";
+          then:
+            - lvgl.label.update:
+                id: mp_lbl_play_icon
+                text: ${text_pause}
+      - if:
+          condition:
+            lambda: return x != "playing";
+          then:
+            - lvgl.label.update:
+                id: mp_lbl_play_icon
+                text: ${text_play}
+
+  # Станция (большой заголовок страницы)
+  - platform: homeassistant
+    id: now_playing
+    entity_id: media_player.esp_media_player
+    attribute: media_title
+    on_value:
+      - lvgl.label.update:
+          id: mp_station_title
+          text: !lambda return x.c_str();
+
+  # Артист (скрывается, если пусто)
+  - platform: homeassistant
+    id: now_playing_artist
+    entity_id: media_player.esp_media_player
+    attribute: media_artist
+    on_value:
+      - if:
+          condition:
+            lambda: return x.length() > 0;
+          then:
+            - lvgl.label.update:
+                id: mp_now_playing_artist
+                text: !lambda return x.c_str();
+            - lvgl.widget.show: mp_now_playing_artist
+          else:
+            - lvgl.widget.hide: mp_now_playing_artist
+
+  # Трек (скрывается, если пусто)
+  - platform: homeassistant
+    id: now_playing_track
+    entity_id: media_player.esp_media_player
+    attribute: media_title
+    on_value:
+      - if:
+          condition:
+            lambda: return x.length() > 0;
+          then:
+            - lvgl.label.update:
+                id: mp_lnow_playing_track
+                text: !lambda return x.c_str();
+            - lvgl.widget.show: mp_lnow_playing_track
+          else:
+            - lvgl.widget.hide: mp_lnow_playing_track
+
+  # Наличие обложки (атрибут media_image_url) -> show/hide mp_now_playing_art.
+  # Фактический рендер картинки — отдельная задача roadmap (item 4/5);
+  # панель показывается как заглушка, пока существуют метаданные обложки.
+  # Fallback attribute name: entity_picture.
+  - platform: homeassistant
+    id: now_playing_art
+    entity_id: media_player.esp_media_player
+    attribute: media_image_url
+    on_value:
+      - if:
+          condition:
+            lambda: return x.length() > 0;
+          then:
+            - lvgl.widget.show: mp_now_playing_art
+          else:
+            - lvgl.widget.hide: mp_now_playing_art
+
+  - platform: homeassistant
+    entity_id: media_player.esp_media_player
+    name: "Media Player State"
+    id: media_player_state
+
+sensor:
+#  - platform: wifi_signal
+#    id: wifi_rssi
+#    name: "WiFi Signal"
+#    internal: true
+#    update_interval: 30s
+#    on_value:
+#      - lvgl.label.update:
+#          id: settings_rssi_value
+#          text: !lambda 'return ("Signal: " + std::to_string((int) x) + " dBm").c_str();'
+
+#  - platform: uptime
+#    id: uptime_sec
+#    internal: true
+#    update_interval: 60s
+#    on_raw_value:
+#      - text_sensor.template.publish:
+#          id: uptime_human
+#          state: !lambda |-
+#            int s = (int) x;
+#            int d = s / 86400; s %= 86400;
+#            int h = s / 3600;  s %= 3600;
+#            int m = s / 60;    s %= 60;
+#            return ("Uptime: " + std::to_string(d) + "d " +
+#                    std::to_string(h) + "h " + std::to_string(m) + "m").c_str();
+                    
+# Громкость (float 0..1 -> int 0..100) -> popup-слайдер громкости
+# NOTE 2 PULL path (volume): HA-originated volume changes are mirrored into the
+# local `volume_level` global AND the popup slider + percent label, so both stay
+# in sync in both directions. Receive-only: this handler never calls
+# homeassistant.action. `volume_last_pushed` is adopted here so the HA echo of
+# a local push is recognized as already-pushed (loop protection, see the
+# `volume_set` script in esp-web-radio-page_now_playing.yaml).
+  - platform: homeassistant
+    id: player_volume
+    entity_id: media_player.esp_media_player
+    attribute: volume_level
+    on_value:
+      - lambda: |-
+          id(volume_level) = x;
+          if (!id(volume_muted)) id(volume_before_mute) = x;
+          id(volume_last_pushed) = x;
+      - lvgl.slider.update:
+          id: volume_slider
+          value: !lambda return int(x * 100);
+      - lvgl.label.update:
+          id: mp_lbl_volume
+          text: !lambda |-
+            int v = (int)(x * 100.0f);
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%d%%", v);
+            return buf;
+
+  # NOTE 2 PULL path (mute): HA-originated mute/unmute (`is_volume_muted`
+  # attribute) is mirrored into the local `volume_muted` global, the hardware
+  # `dac_mute` switch (GPIO7 / PCM5102 XSMT) and the mute icon. Unmuting with a
+  # zeroed local level restores the remembered pre-mute volume. Receive-only
+  # (never calls homeassistant.action) and adopts echoed values into
+  # `volume_mute_last_pushed`. Requires the media_player entity to expose the
+  # `is_volume_muted` attribute; if the platform does not, this sensor stays
+  # unknown and mute sync falls back to the volume-level path (muted == 0).
+  - platform: homeassistant
+    id: player_muted
+    entity_id: media_player.esp_media_player
+    attribute: is_volume_muted
+    on_value:
+      - lambda: |-
+          id(volume_muted) = (x > 0.5f);
+          id(volume_mute_last_pushed) = id(volume_muted);
+      - if:
+          condition:
+            lambda: 'return id(volume_muted);'
+          then:
+            - switch.turn_on: dac_mute
+          else:
+            - switch.turn_off: dac_mute
+            - if:
+                condition:
+                  lambda: 'return id(volume_level) <= 0.0f && id(volume_before_mute) > 0.0f;'
+                then:
+                  - lambda: 'id(volume_level) = id(volume_before_mute);'
+                  - script.execute: volume_set
+      - lambda: |-
+          if (id(volume_muted)) {
+            lv_obj_set_style_text_color(id(mp_lbl_mute_icon), lv_color_hex(${color_accent}), 0);
+          } else {
+            lv_obj_set_style_text_color(id(mp_lbl_mute_icon), lv_color_hex(${color_text_muted}), 0);
+          }
+
+  # Позиция трека -> прогресс-бар + elapsed (mm:ss)
+  - platform: homeassistant
+    id: player_position
+    entity_id: media_player.esp_media_player
+    attribute: media_position
+    on_value:
+      - lvgl.bar.update:
+          id: mp_bar_progress
+          value: !lambda |-
+            float dur = id(player_duration).state;
+            if (dur <= 0.0f) return 0;
+            int pct = (int)(x / dur * 100.0f);
+            if (pct > 100) pct = 100;
+            return pct;
+      - lvgl.label.update:
+          id: mp_lbl_elapsed
+          text: !lambda |-
+            int t = (int)x;
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%d:%02d", t / 60, t % 60);
+            return buf;
+
+  # Длительность трека -> total (mm:ss) + прогресс-бар
+  - platform: homeassistant
+    id: player_duration
+    entity_id: media_player.esp_media_player
+    attribute: media_duration
+    on_value:
+      - lvgl.label.update:
+          id: mp_lbl_total
+          text: !lambda |-
+            int t = (int)x;
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%d:%02d", t / 60, t % 60);
+            return buf;
+      - lvgl.bar.update:
+          id: mp_bar_progress
+          value: !lambda |-
+            float dur = x;
+            if (dur <= 0.0f) return 0;
+            float pos = id(player_position).state;
+            int pct = (int)(pos / dur * 100.0f);
+            if (pct > 100) pct = 100;
+            return pct;
+
+# ---------------------------------------------------------------------------
+# Global: current radio station (1..4), used by mp_btn_prev / mp_btn_next on
+# the Now Playing page to cycle through station_1_url .. station_4_url.
+# ---------------------------------------------------------------------------
+globals:
+  - id: current_station
+    type: int
+    restore_value: no
+    initial_value: "1"
+  # True while a Home Assistant client is connected; selects `esptime` for the
+  # title-bar clock (see `update_clock` script).
+  - id: ha_connected
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  # True while the local media player reports state "playing" (updated by the
+  # media_player.on_play/on_pause/on_idle triggers in esp-web-radio-audio.yaml);
+  # drives play/pause UI in every mode, including when HA is unreachable.
+  - id: player_playing
+    type: bool
+    restore_value: no
+    initial_value: "false"

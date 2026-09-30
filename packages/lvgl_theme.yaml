@@ -1,0 +1,216 @@
+# ==============================================================================
+# lvgl_theme.yaml - GLOBAL dark-orange LVGL theme + shared style definitions
+#
+# The dark-orange palette is applied application-wide through `lvgl.theme`
+# (widget-type defaults) and through the named `style_definitions` below.
+# This package replaces the old blue-accented inline theme that used to live
+# in esp-web-radio-lvgl_ui.yaml, so that file must NOT define its own
+# `lvgl.theme` / `style_definitions` (duplicate-key merge conflict).
+# ==============================================================================
+
+substitutions:
+  # ── Dark-orange palette ──
+  color_accent:       0xF97316   # primary orange
+  color_accent_dark:  0xD14B00   # darker orange (gradient end / pressed)
+  color_surface:      0x070E1B   # app background
+  color_surface_alt:  0x0E1216   # alternate surface (bottom layer / footer)
+  color_panel:        0x162038   # panels, cards, controls
+  color_panel_grad:   0x0F1929   # panel gradient end
+  color_text_primary: 0xF1F5F9   # main text
+  color_text_muted:   0x8E9FB8   # secondary text
+  color_border:       0x162038   # borders (same hue as panels)
+
+  # ── Font aliases (resolved from display-fonts.yaml) ──
+  font_body:          f_body
+  font_small:         f_small
+  font_title:         f_title
+  font_icon:          menu24
+
+lvgl:
+  theme:
+    dark_mode: true
+    label:
+      text_font: ${font_body}
+      text_color: ${color_text_primary}
+    button:
+      bg_color: ${color_accent}
+      bg_grad_color: ${color_accent_dark}
+      bg_grad_dir: VER
+      bg_opa: COVER
+      border_color: ${color_accent_dark}
+      border_width: 0
+      text_color: 0xFFFFFF
+      pressed:
+        bg_color: 0xEA580C
+        bg_grad_color: 0x9A3412
+        bg_grad_dir: VER
+      checked:
+        bg_color: ${color_accent_dark}
+        bg_grad_color: 0x9A3412
+        bg_grad_dir: VER
+        text_color: 0xFFE7CC
+    buttonmatrix:
+      bg_opa: TRANSP
+      border_color: ${color_border}
+      border_width: 0
+      text_color: ${color_text_primary}
+      pad_all: 0
+      items:              # all buttonmatrix buttons use themed styles + font
+        bg_color: ${color_panel}
+        bg_grad_color: ${color_panel_grad}
+        bg_grad_dir: VER
+        bg_opa: COVER
+        border_color: ${color_border}
+        border_width: 1
+        text_color: ${color_text_primary}
+        text_font: ${btnmtrx_text_font}
+        pressed:
+          bg_color: ${color_accent}
+          bg_grad_color: ${color_accent_dark}
+          bg_grad_dir: VER
+        checked:
+          bg_color: ${color_accent_dark}
+          bg_grad_color: 0x9A3412
+          bg_grad_dir: VER
+          text_color: ${color_text_primary}
+    switch:
+      bg_color: ${color_panel}
+      bg_opa: COVER
+      border_color: ${color_border}
+      checked:
+        bg_color: ${color_accent}
+        bg_grad_color: ${color_accent_dark}
+        bg_grad_dir: VER
+        bg_opa: COVER
+      knob:
+        bg_color: ${color_text_primary}
+        bg_opa: COVER
+    slider:
+      border_width: 1
+      border_opa: 15%
+      bg_color: ${color_panel}
+      bg_opa: 100%
+      indicator:
+        bg_color: ${color_accent}
+        bg_grad_color: ${color_accent_dark}
+        bg_grad_dir: VER
+        bg_opa: COVER
+      knob:
+        bg_color: ${color_accent}
+        bg_grad_color: ${color_accent_dark}
+        bg_grad_dir: VER
+        bg_opa: COVER
+        border_color: ${color_accent_dark}
+        border_width: 1
+    bar:
+      bg_color: ${color_panel}
+      bg_opa: 100%
+      indicator:
+        bg_color: ${color_accent}
+        bg_opa: 80%
+    arc:
+      bg_color: ${color_panel}
+      arc_color: ${color_accent}
+      arc_width: 10
+      indicator:
+        arc_color: ${color_accent}
+    spinner:
+      bg_color: ${color_panel}
+      arc_color: ${color_accent}
+      arc_width: 10
+
+  # ---------------------------------------------------------------------------
+  # Shared named styles (previously inline hex colors lived on the widgets).
+  # ---------------------------------------------------------------------------
+  style_definitions:
+    - id: header_footer
+      bg_color: ${color_surface_alt}
+      bg_grad_color: ${color_panel}
+      bg_grad_dir: VER
+      bg_opa: COVER
+      border_opa: TRANSP
+      border_color: ${color_border}
+      radius: 0
+      pad_all: 0
+      pad_row: 0
+      pad_column: 0
+      text_color: ${color_text_primary}
+      width: 100%
+      height: 30
+
+    - id: card
+      bg_color: ${color_surface}
+      bg_opa: COVER
+      border_width: 1
+      border_color: ${color_border}
+      border_opa: 20%
+      radius: 22
+      shadow_width: 0
+      shadow_opa: 0%
+      pad_all: 0
+
+    - id: panel
+      bg_color: ${color_panel}
+      bg_grad_color: ${color_panel_grad}
+      bg_grad_dir: VER
+      bg_opa: COVER
+      border_width: 1
+      border_color: ${color_border}
+      radius: 22
+      pad_all: 0
+
+    - id: icon_button
+      bg_color: ${color_panel}
+      bg_grad_color: ${color_panel_grad}
+      bg_grad_dir: VER
+      bg_opa: COVER
+      border_width: 0
+      radius: 16
+      text_color: ${color_text_primary}
+      text_font: ${font_icon}
+
+    - id: primary_button
+      bg_color: ${color_accent}
+      bg_grad_color: ${color_accent_dark}
+      bg_grad_dir: VER
+      bg_opa: COVER
+      border_width: 0
+      radius: 20
+      text_color: 0xFFFFFF
+
+    - id: text_primary
+      text_color: ${color_text_primary}
+
+    - id: text_muted
+      text_color: ${color_text_muted}
+
+    - id: text_title
+      text_color: ${color_text_primary}
+      text_font: ${font_title}
+      text_align: CENTER
+
+    - id: text_body
+      text_color: ${color_text_primary}
+      text_font: ${font_body}
+
+    - id: text_small
+      text_color: ${color_text_muted}
+      text_font: ${font_small}
+
+    - id: controls_row
+      bg_opa: 0%
+      border_width: 0
+      radius: 2
+      pad_all: 0
+
+    # Stations page slot buttons (dark panel look; pressed feedback comes from
+    # the theme button defaults). See packages/esp-web-radio-page_stations.yaml.
+    - id: station_button
+      bg_color: ${color_panel}
+      bg_grad_color: ${color_panel_grad}
+      bg_grad_dir: VER
+      bg_opa: COVER
+      border_width: 1
+      border_color: ${color_border}
+      radius: 12
+      pad_all: 0

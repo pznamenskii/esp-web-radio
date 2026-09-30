@@ -1,0 +1,18 @@
+- sensor:
+#список радиостанций
+  - name: "Offline Station 1 Name"
+    state: "Радио Дача"
+  - name: "Offline Station 1 URL"
+    state: "http://listen13.vdfm.ru:8000/dacha"
+  - name: "Offline Station 2 Name"
+    state: "Авторадио"
+  - name: "Offline Station 2 URL"
+    state: "https://online2.gkvr.ru:8001/avtoradio_mzd_64.aac"
+  - name: "Offline Station 3 Name"
+    state: "Русское Радио"
+  - name: "Offline Station 3 URL"
+    state: "https://rusradio.hostingradio.ru/rusradio96.aacp"
+  - name: "Offline Station 4 Name"
+    state: "Наше Радио"
+  - name: "Offline Station 4 URL"
+    state: "http://nashe.streamr.ru/nashe-128.mp3"

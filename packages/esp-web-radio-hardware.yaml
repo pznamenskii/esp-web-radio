@@ -1,0 +1,102 @@
+# ==============================================================================
+# hardware.yaml - MCU peripherals for the JC3248W535C board
+#
+# Display: AXS15231B combo driver, QSPI interface + I2C capacitive touch.
+# Configured for LANDSCAPE (480 wide x 320 tall) so all LVGL layouts below are
+# authored in landscape coordinates.
+# ==============================================================================
+
+# QSPI bus used by the display. `type: quad` -> single clock + 4 data lines.
+spi:
+  - id: display_qspi
+    type: quad
+    clk_pin: 47
+    data_pins: [21, 48, 40, 39]
+
+# I2C bus used by the capacitive touch controller.
+i2c:
+  - id: touchscreen_bus
+    sda: 4
+    scl: 8
+    frequency: 400kHz
+
+# ---------------------------------------------------------------------------
+# Display (AXS15231B QSPI, presented in landscape 480x320)
+# ---------------------------------------------------------------------------
+display:
+#  - platform: axs15231
+  - platform: mipi_spi
+    model: JC3248W535
+    id: main_display
+    data_rate: 40MHz
+    spi_id: display_qspi
+    dimensions:
+      width: 320
+      height: 480
+    cs_pin: 45
+#    rotation: 90    
+    update_interval: never       # LVGL drives the redraw
+    auto_clear_enabled: false    # required by LVGL
+
+# ---------------------------------------------------------------------------
+# Touchscreen (I2C, same AXS15231 chip)
+# ---------------------------------------------------------------------------
+touchscreen:
+  - platform: axs15231
+    id: main_touch
+    display: main_display
+    i2c_id: touchscreen_bus
+    on_touch:
+      - logger.log:
+          format: Touch at (%d, %d)
+          args: [touch.x, touch.y]
+      - if:
+          condition: lvgl.is_paused
+          then:
+            - light.turn_on: backlight    # instant light at touch-down
+    on_release:       # safe input handoff: resume only after finger is up
+      then:
+        - if:
+            condition: lvgl.is_paused
+            then:
+              - logger.log: "DBG: WAKE branch - resuming LVGL + backlight on"
+              - lvgl.resume:
+              - lvgl.widget.redraw:
+#    transform:
+#      swap_xy: true
+#      mirror_y: true
+
+# ---------------------------------------------------------------------------
+# Power / status
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# LCD backlight. For this panel the driver does NOT manage the backlight, so it
+# is driven by a dedicated PWM (LEDC) output on GPIO1 (active high). Exposed as
+# a dimmable monochromatic light so it turns on at boot and can be controlled
+# from Home Assistant or the Settings page slider.
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    id: backlight_output
+    pin: GPIO1
+    frequency: 5000Hz
+# LOW на GPIO16 присоединённый к MSCLK
+#  - platform: gpio
+#    pin: GPIO16
+#    id: sck_gnd    
+
+light:
+  - platform: monochromatic
+    id: backlight
+    name: "ESP Media Player Backlight"
+    output: backlight_output
+    restore_mode: ALWAYS_ON
+    internal: false
+
+# ---------------------------------------------------------------------------
+# Power / status
+# ---------------------------------------------------------------------------
+binary_sensor:
+  - platform: status
+    name: "ESP Media Player Radio Status"
+    id: radio_status

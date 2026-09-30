@@ -1,0 +1,160 @@
+# ==============================================================================
+# audio.yaml - I2S DAC + speaker + media player
+#
+# DAC: PCM5102-style I2S stereo decoder with a BUILT-IN PLL, so may NOT
+#      need an external MCLK. It also has a dedicated MUTE pin that requires a
+#      LOGIC LOW level to mute (default = unmuted).
+#
+# Wiring:
+#   BCLK  = GPIO6
+#   LRCLK = GPIO5
+#   DOUT  = GPIO15
+#   MCLK  = GPIO16
+#   MUTE  = GPIO7   (LOW mutes the DAC)
+#
+# Line-level analog output goes to your external amplifier.
+# ==============================================================================
+
+# ──────────────────────────────────────
+# I2S Audio → PCM5102A
+# ──────────────────────────────────────
+i2s_audio:
+  i2s_lrclk_pin: GPIO5
+  i2s_bclk_pin: GPIO6
+  i2s_mclk_pin: GPIO16
+
+speaker:
+  # Базовый I2S-выход на PCM5102A
+  - platform: i2s_audio
+    id: i2s_speaker
+    dac_type: external
+    i2s_dout_pin: GPIO15
+    channel: stereo
+    sample_rate: 48000
+    bits_per_sample: 16bit
+
+  # Mixer: объединяет media и announcement в один выход
+  - platform: mixer
+    id: main_mixer_speaker
+    output_speaker: i2s_speaker
+    source_speakers:
+      - id: announcement_mixer_input
+      - id: media_mixer_input
+
+  # Resampler для media-пайплайна
+  - platform: resampler
+    id: main_media_resampler
+    output_speaker: media_mixer_input
+    sample_rate: 48000
+#    bits_per_sample: 16bit
+
+  # Resampler для announcement-пайплайна
+  - platform: resampler
+    id: main_announcement_resampler
+    output_speaker: announcement_mixer_input
+    sample_rate: 48000
+#    bits_per_sample: 16bit
+
+# ──────────────────────────────────────
+# MUTE: GPIO7 → XSMT на PCM5102A (active LOW)
+# ──────────────────────────────────────
+switch:
+  - platform: gpio
+    pin: GPIO7
+    id: dac_mute
+    name: "DAC Mute"
+    restore_mode: ALWAYS_OFF
+    inverted: true   # ON → LOW → muted | OFF → HIGH → unmuted
+
+# ──────────────────────────────────────
+# HTTP media source: required for native (no-HA) playback of stream URLs.
+# Without this component the speaker media player cannot open http(s) URLs and
+# fails instantly with ESP_ERR_NOT_SUPPORTED (verified in logs/play_issue_2118.txt).
+# ──────────────────────────────────────
+media_source:
+  - platform: audio_http
+    id: http_source
+
+# ──────────────────────────────────────
+# Media Player (speaker platform)
+# ──────────────────────────────────────
+media_player:
+  - platform: speaker
+    name: "ESP Media Player"
+    id: esp_media_player
+    # Compile ALL decoders (FLAC/MP3/OPUS/WAV). With `format: FLAC` alone only
+    # the FLAC decoder is built, so direct MP3 URLs (wifi-only mode) fail with
+    # ESP_ERR_NOT_SUPPORTED; HA mode still works because HA transcodes to FLAC.
+    codec_support_enabled: ALL
+    media_pipeline:
+      speaker: main_media_resampler
+      format: NONE          # <-- Включает все декодеры (MP3, FLAC, OPUS, WAV)
+      num_channels: 2
+      # sample_rate intentionally omitted: for native URLs the pipeline derives
+      # it from the stream itself; HA transcoding falls back to the speaker's
+      # sample rate (48000) exactly as before.
+    announcement_pipeline:
+      speaker: main_announcement_resampler
+      format: FLAC
+      num_channels: 1
+      sample_rate: 48000
+
+    # Imp 4/6: native play-state hooks — drive mp_visualizer visibility and the
+    # play/pause glyph on mp_lbl_play_icon in EVERY mode (incl. no-HA), and keep
+    # the `player_playing` global current for mp_btn_play. The HA `player_state`
+    # sensor updates the same glyph when connected — both reflect the same
+    # truth, so there is no conflict.
+    # Note: payload-free triggers on_play/on_pause/on_idle are used instead of
+    # on_state because on_state forwards a MediaPlayerState enum (not a string).
+    on_play:
+      - logger.log: "media player playing"
+      - lambda: 'id(player_playing) = true;'
+      - lvgl.widget.show: mp_visualizer
+      - lvgl.label.update:
+          id: mp_lbl_play_icon
+          text: ${text_pause}
+    on_pause:
+      - logger.log: "media player paused"
+      - lambda: 'id(player_playing) = false;'
+      - lvgl.widget.hide: mp_visualizer
+      - lvgl.label.update:
+          id: mp_lbl_play_icon
+          text: ${text_play}
+    on_idle:
+      - logger.log: "media player idle"
+      - lambda: 'id(player_playing) = false;'
+      - lvgl.widget.hide: mp_visualizer
+      - lvgl.label.update:
+          id: mp_lbl_play_icon
+          text: ${text_play}
+
+#          // 2. Синхронизация LVGL (play/pause + статус)
+#          auto *play_btn = id(play_button);
+#          auto *status_lbl = id(status_label);
+#
+#          if (x == "playing") {
+#            play_btn->set_checked(true);
+#            status_lbl->set_text("ON AIR");
+#          } else {
+#            play_btn->set_checked(false);
+#            status_lbl->set_text("STOPPED");
+#          }
+
+#    on_mute:
+#      - switch.turn_on: dac_mute
+#      - lvgl.widget.update:
+#          id: mute_button
+#          state:
+#            checked: true
+
+#    on_unmute:
+#      - switch.turn_off: dac_mute
+#      - lvgl.widget.update:
+#          id: mute_button
+#          state:
+#            checked: false
+
+#    on_volume:
+#      - lvgl.slider.update:
+#          id: volume_slider
+#          value: !lambda 'return (int) (x * 100.0f);'

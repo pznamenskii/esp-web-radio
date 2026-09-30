@@ -1,0 +1,124 @@
+# ==============================================================================
+# ESP Web Radio - ESP32-S3 (JC3248W535C) + PCM5102 I2S DAC
+#
+# The actual credentials live in a git-ignored file. This project uses the
+# filename `secrets_radio.yaml`; pass it to esphome with `--secrets secrets_radio.yaml`
+# (or configure your ESPHome dashboard accordingly).
+# ==============================================================================
+
+substitutions:
+  ap_ssid: "ESP Radio Fallback"     # keep in sync with wifi.ap.ssid below
+  ap_password: !secret ap_password  # fallback AP password - WIFI: QR + wifi.ap.password below
+  ap_password_display: !secret ap_password   # shown on the AP setup page
+  ap_url: "http://192.168.4.1"      # fallback AP URL - text on the AP setup page
+  station_count: 4                  # station presets (1..N); raise when more are declared
+
+esphome:
+  name: esp-web-radio
+  friendly_name: ESP Internet Radio
+  comment: "ESP32-S3 WiFi internet radio (JC3248W535C display + PCM5102 DAC)"
+  on_boot:
+#    priority: 700
+#    - output.turn_off: sck_gnd
+#    - delay: 500ms
+    - lvgl.page.show: page_now_playing
+    - light.turn_on: backlight
+    - lambda: 'id(boot_done) = true;'
+    - script.execute: refresh_stations   # populate the Stations page for the current mode
+
+  platformio_options:
+    upload_speed: 921600
+    build_unflags: -Werror=all
+    board_build.flash_mode: dio
+    board_build.f_flash: 80000000L
+    board_build.f_cpu: 240000000L
+    
+
+# ---------------------------------------------------------------------------
+# MCU / framework
+# ---------------------------------------------------------------------------
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      # Required for good I2S audio timing
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      # Allow code/data to run from PSRAM (needed by the audio pipeline)
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+      # HTTPS radio streams (direct https URLs, http->https redirects and HA
+      # radio_browser streams): let the media player's HTTP client connect
+      # without server-certificate verification (public radio streams).
+      CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY: "y"
+
+# 8 MB octal PSRAM on this board. Audio pipeline + LVGL both want it.
+psram:
+  mode: octal
+  speed: 80MHz
+
+# ---------------------------------------------------------------------------
+# Modular configuration via packages (see ./packages/*.yaml)
+# ---------------------------------------------------------------------------
+packages:
+  hardware:       !include packages/esp-web-radio-hardware.yaml
+  audio:          !include packages/esp-web-radio-audio.yaml
+#  radio_core:     !include packages/esp-web-radio-radio_core.yaml
+  homeassistant:  !include packages/esp-web-radio-homeassistant.yaml
+  offline_stations: !include packages/esp-web-radio-offline_stations.yaml
+  lvgl_ui:        !include packages/esp-web-radio-lvgl_ui.yaml
+  fonts:          !include packages/display-fonts.yaml
+  colors:         !include packages/common-colors.yaml
+  theme:          !include packages/lvgl_theme.yaml
+  page_now_playing: !include packages/esp-web-radio-page_now_playing.yaml
+  page_stations:  !include packages/esp-web-radio-page_stations.yaml
+  page_ap_setup: !include packages/esp-web-radio-page_ap_setup.yaml
+#  swipe:         !include packages/swipe_navigation.yaml
+
+# ---------------------------------------------------------------------------
+# Connectivity
+# ---------------------------------------------------------------------------
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Fallback access point (captive portal) when WiFi is unavailable
+  ap:
+    ssid: "${ap_ssid}"
+    password: "${ap_password}"
+    ap_timeout: 20s
+
+captive_portal:
+
+logger:
+  level: DEBUG
+
+# Home Assistant native API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Web interface (control entities + REST API). Edit the presets here: the
+# "Preset N Name / Preset N URL" text fields are shown as editable inputs.
+#web_server:
+#  port: 18080
+#  version: 2
+#  auth:
+#    username: admin
+#    password: !secret ota_password
+
+globals:
+  - id: boot_done
+    type: bool
+    initial_value: "false"
+  - id: boot_spinner_angle
+    type: int
+    restore_value: no
+    initial_value: "0"    

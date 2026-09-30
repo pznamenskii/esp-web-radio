@@ -1,0 +1,23 @@
+# ==============================================================================
+# offline_stations.yaml - hardcoded station list for no-HA mode
+#
+# Device-side fallback used whenever the Home Assistant API is unreachable
+# (WiFi up, HA down). Mirrors the HA-side template sensors in offline_stations.yaml
+# (root file, imported into HA), but with direct stream URLs so the device can
+# play them itself without HA's media-source:// resolution.
+#
+# The Stations page (page_stations) and the play_station script pick these up
+# through the refresh_stations script; when HA reconnects, station names and
+# playback automatically switch back to the HA sensors.
+# ==============================================================================
+
+substitutions:
+  offline_station_1_name: "Радио Дача"
+  # listen13.vdfm.ru redirects to https -> use the https target directly
+  offline_station_1_url:  "https://listen2.vdfm.ru:8000/dacha"
+  offline_station_2_name: "Авторадио"
+  offline_station_2_url:  "https://online2.gkvr.ru:8001/avtoradio_mzd_64.aac"
+  offline_station_3_name: "Русское Радио"
+  offline_station_3_url:  "https://rusradio.hostingradio.ru/rusradio96.aacp"
+  offline_station_4_name: "Наше Радио"
+  offline_station_4_url:  "http://nashe.streamr.ru/nashe-128.mp3"

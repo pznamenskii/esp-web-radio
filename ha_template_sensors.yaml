@@ -1,0 +1,18 @@
+- sensor:
+#список радиостанций
+  - name: "Radio Station 1 Name"
+    state: "Радио Дача"
+  - name: "Radio Station 1 URL"
+    state: "media-source://radio_browser/e3b0102d-0db6-4655-92d6-e37652ddedca"
+  - name: "Radio Station 2 Name"
+    state: "Авторадио"
+  - name: "Radio Station 2 URL"
+    state: "media-source://radio_browser/5f182e63-9273-4694-b606-70c608a86f10"
+  - name: "Radio Station 3 Name"
+    state: "Русское Радио"
+  - name: "Radio Station 3 URL"
+    state: "media-source://radio_browser/033fe547-b71c-4ea0-8274-e6522444629c"
+  - name: "Radio Station 4 Name"
+    state: "Наше Радио"
+  - name: "Radio Station 4 URL"
+    state: "media-source://radio_browser/996ea893-621d-11e9-a622-52543be04c81"

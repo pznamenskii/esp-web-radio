@@ -1,0 +1,332 @@
+# ==============================================================================
+# page_stations.yaml - Stations page (dynamic station button grid)
+#
+# Lists every available station as a button. The set of visible buttons follows
+# whatever station-name data is available:
+#   - HA connected:  station_1_name .. station_12_name sensors (HA template
+#                    sensors, see ha_template_sensors.yaml)
+#   - no-HA mode:    offline_station_1_name .. offline_station_4_name
+#                    substitutions (see esp-web-radio-offline_stations.yaml)
+# Population, slot visibility and grid height are handled centrally by the
+# `refresh_stations` script (see esp-web-radio-lvgl_ui.yaml); every button
+# routes playback through the `play_station` script (HA vs direct URL).
+#
+# Geometry: 12 slots in a 2-col x 6-row grid (224x52 buttons, 56 px pitch).
+# The grid container height is set at runtime to rows*56, so the page shows a
+# vertical scrollbar whenever more than 8 stations are active.
+# ==============================================================================
+
+lvgl:
+  pages:
+    - id: page_stations
+      pad_all: 0
+      scrollbar_mode: "AUTO"
+      # Swipe navigation: shared handlers from swipe_navigation.yaml.
+      <<: !include swipe_navigation.yaml
+      widgets:
+        - label:
+            id: st_title
+            styles: text_title
+            x: 16
+            y: 12
+            width: 200
+            height: 30
+            text: "Станции"
+            text_align: LEFT
+        - obj:
+            id: st_grid
+            x: 0
+            y: 48
+            width: 480
+            height: 112
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - button:
+                  id: st_btn_1
+                  styles: station_button
+                  hidden: true
+                  x: 16
+                  y: 0
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 1;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_1
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_2
+                  styles: station_button
+                  hidden: true
+                  x: 240
+                  y: 0
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 2;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_2
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_3
+                  styles: station_button
+                  hidden: true
+                  x: 16
+                  y: 56
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 3;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_3
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_4
+                  styles: station_button
+                  hidden: true
+                  x: 240
+                  y: 56
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 4;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_4
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_5
+                  styles: station_button
+                  hidden: true
+                  x: 16
+                  y: 112
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 5;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_5
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_6
+                  styles: station_button
+                  hidden: true
+                  x: 240
+                  y: 112
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 6;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_6
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_7
+                  styles: station_button
+                  hidden: true
+                  x: 16
+                  y: 168
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 7;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_7
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_8
+                  styles: station_button
+                  hidden: true
+                  x: 240
+                  y: 168
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 8;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_8
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_9
+                  styles: station_button
+                  hidden: true
+                  x: 16
+                  y: 224
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 9;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_9
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_10
+                  styles: station_button
+                  hidden: true
+                  x: 240
+                  y: 224
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 10;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_10
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_11
+                  styles: station_button
+                  hidden: true
+                  x: 16
+                  y: 280
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 11;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_11
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}
+              - button:
+                  id: st_btn_12
+                  styles: station_button
+                  hidden: true
+                  x: 240
+                  y: 280
+                  width: 224
+                  height: 52
+                  pad_all: 0
+                  on_press:
+                    - lambda: 'id(current_station) = 12;'
+                    - script.execute: play_station
+                  widgets:
+                    - label:
+                        id: st_lbl_12
+                        x: 12
+                        y: 0
+                        width: 200
+                        height: 52
+                        text: ""
+                        text_align: LEFT
+                        long_mode: SCROLL
+                        text_font: ${font_body}
+                        text_color: ${color_text_primary}

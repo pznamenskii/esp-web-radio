@@ -1,0 +1,612 @@
+# ==============================================================================
+# lvgl_ui.yaml - LVGL framework + pages (landscape 480x320)
+#
+# Three pages: Now Playing, Stations, Settings. A persistent bottom navigation
+# bar is drawn in the LVGL `top_layer` so it is present on every page.
+#
+# The GLOBAL dark-orange theme and shared styles now live in
+# packages/lvgl_theme.yaml (included from the main config).
+# ==============================================================================
+
+substitutions:
+  idle_timeout:          15s
+  lbl_text_font:         menu24
+  btnmtrx_text_font:     menu24
+  homepage:              page_now_playing
+
+# Clock source selection: HA time while connected, local NTP time while WiFi is
+# up, hidden otherwise (see README "Time sync & device modes").
+globals:
+  - id: wifi_connected
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  # True while the fallback AP + captive portal are active (mirrors
+  # `wifi.ap_active`; edges detected by `interval.ap_state_watch`).
+  - id: ap_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  # True while page_ap_setup is displayed; used to decide whether
+  # `exit_ap_mode` must return to the home page.
+  - id: ap_page_shown
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+script:
+  - id: update_clock
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(esptime).now().is_valid();'
+          then:
+            - lvgl.widget.show: lbl_time
+            - lvgl.label.update:
+                id: lbl_time
+                text: !lambda 'return id(esptime).now().strftime("%H:%M");'
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(wifi_connected) && id(wifi_time).now().is_valid();'
+                then:
+                  - lvgl.widget.show: lbl_time
+                  - lvgl.label.update:
+                      id: lbl_time
+                      text: !lambda 'return id(wifi_time).now().strftime("%H:%M");'
+                else:
+                  - lvgl.widget.hide: lbl_time
+
+  # ---------------------------------------------------------------------------
+  # AP mode (fallback access point + captive portal): driven by polling
+  # `wifi.ap_active` every 500 ms while the station is disconnected. Rising
+  # edge -> enter_ap_mode (WiFi setup page + blinking wifi_status); falling
+  # edge -> exit_ap_mode (back to Now Playing).
+  # ---------------------------------------------------------------------------
+  - id: enter_ap_mode
+    then:
+      - logger.log: "AP mode: showing WiFi setup page"
+      # Wake the display in case the device idled/slept while STA was failing
+      - if:
+          condition: lvgl.is_paused
+          then:
+            - lvgl.resume:
+            - lvgl.widget.redraw:
+            - light.turn_on: backlight
+      - lvgl.widget.hide: boot_screen     # Improvement 2: AP dismisses boot
+      - lvgl.page.show: page_ap_setup
+      - lambda: 'id(ap_page_shown) = true;'
+      - lvgl.widget.show: wifi_status
+      - lvgl.label.update:
+          id: wifi_status
+          text: "${text_wifi_cog}"
+      - script.execute: blink_wifi_status
+      # Polish: hide the bottom nav bar while the AP page is a locked modal
+      - lvgl.widget.hide: top_layer
+
+  - id: exit_ap_mode
+    then:
+      - logger.log: "AP mode ended"
+      - script.stop: blink_wifi_status
+      - lvgl.label.update:
+          id: wifi_status
+          text: "${text_wifi}"
+      - lvgl.widget.show: top_layer
+      - if:
+          condition:
+            lambda: 'return id(ap_page_shown);'
+          then:
+            - lvgl.page.show: ${homepage}   # back to Now Playing
+            - lambda: 'id(ap_page_shown) = false;'
+      # wifi_status visibility is now governed again by wifi.on_connect/
+      # on_disconnect (station up => shown, down => hidden).
+
+  - id: blink_wifi_status
+    mode: restart
+    then:
+      - while:
+          condition:
+            lambda: 'return id(ap_active);'
+          then:
+            - lvgl.widget.hide: wifi_status
+            - delay: 400ms
+            - lvgl.widget.show: wifi_status
+            - delay: 400ms
+
+  # ---------------------------------------------------------------------------
+  # Station list population - single source of truth for the Stations page
+  # (packages/esp-web-radio-page_stations.yaml).
+  # Name source: HA station_N_name sensors while the API is connected, otherwise
+  # the hardcoded offline_station_N_name substitutions (slots 1..4 only). Slots
+  # with no name stay hidden; st_grid height is set to rows*56 so a vertical
+  # scrollbar appears once more than 8 stations are active.
+  # Triggered from: wifi.on_connect, api connect/disconnect, on_boot and every
+  # station_N_name on_value (see esp-web-radio-homeassistant.yaml).
+  # ---------------------------------------------------------------------------
+  - id: refresh_stations
+    mode: restart
+    then:
+      # ── Slot 1: HA name preferred, offline fallback ──
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_1_name).has_state() && id(station_1_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_1
+                text: !lambda 'return id(station_1_name).state.c_str();'
+            - lvgl.widget.show: st_btn_1
+          else:
+            # Offline names are compile-time constants (always defined) — no guard needed
+            - lvgl.label.update:
+                id: st_lbl_1
+                text: "${offline_station_1_name}"
+            - lvgl.widget.show: st_btn_1
+      # ── Slot 2 ──
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_2_name).has_state() && id(station_2_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_2
+                text: !lambda 'return id(station_2_name).state.c_str();'
+            - lvgl.widget.show: st_btn_2
+          else:
+            - lvgl.label.update:
+                id: st_lbl_2
+                text: "${offline_station_2_name}"
+            - lvgl.widget.show: st_btn_2
+      # ── Slot 3 ──
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_3_name).has_state() && id(station_3_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_3
+                text: !lambda 'return id(station_3_name).state.c_str();'
+            - lvgl.widget.show: st_btn_3
+          else:
+            - lvgl.label.update:
+                id: st_lbl_3
+                text: "${offline_station_3_name}"
+            - lvgl.widget.show: st_btn_3
+      # ── Slot 4 ──
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_4_name).has_state() && id(station_4_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_4
+                text: !lambda 'return id(station_4_name).state.c_str();'
+            - lvgl.widget.show: st_btn_4
+          else:
+            - lvgl.label.update:
+                id: st_lbl_4
+                text: "${offline_station_4_name}"
+            - lvgl.widget.show: st_btn_4
+      # ── Slots 5..12: HA only (no offline fallback) ──
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_5_name).has_state() && id(station_5_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_5
+                text: !lambda 'return id(station_5_name).state.c_str();'
+            - lvgl.widget.show: st_btn_5
+          else:
+            - lvgl.widget.hide: st_btn_5
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_6_name).has_state() && id(station_6_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_6
+                text: !lambda 'return id(station_6_name).state.c_str();'
+            - lvgl.widget.show: st_btn_6
+          else:
+            - lvgl.widget.hide: st_btn_6
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_7_name).has_state() && id(station_7_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_7
+                text: !lambda 'return id(station_7_name).state.c_str();'
+            - lvgl.widget.show: st_btn_7
+          else:
+            - lvgl.widget.hide: st_btn_7
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_8_name).has_state() && id(station_8_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_8
+                text: !lambda 'return id(station_8_name).state.c_str();'
+            - lvgl.widget.show: st_btn_8
+          else:
+            - lvgl.widget.hide: st_btn_8
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_9_name).has_state() && id(station_9_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_9
+                text: !lambda 'return id(station_9_name).state.c_str();'
+            - lvgl.widget.show: st_btn_9
+          else:
+            - lvgl.widget.hide: st_btn_9
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_10_name).has_state() && id(station_10_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_10
+                text: !lambda 'return id(station_10_name).state.c_str();'
+            - lvgl.widget.show: st_btn_10
+          else:
+            - lvgl.widget.hide: st_btn_10
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_11_name).has_state() && id(station_11_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_11
+                text: !lambda 'return id(station_11_name).state.c_str();'
+            - lvgl.widget.show: st_btn_11
+          else:
+            - lvgl.widget.hide: st_btn_11
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_12_name).has_state() && id(station_12_name).state.length() > 0;'
+          then:
+            - lvgl.label.update:
+                id: st_lbl_12
+                text: !lambda 'return id(station_12_name).state.c_str();'
+            - lvgl.widget.show: st_btn_12
+          else:
+            - lvgl.widget.hide: st_btn_12
+      # ── Grid height from the number of visible slots (2 columns, 56 px pitch) ──
+      - lambda: |-
+          int visible = 0;
+          if (!lv_obj_has_flag(id(st_btn_1), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_2), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_3), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_4), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_5), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_6), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_7), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_8), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_9), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_10), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_11), LV_OBJ_FLAG_HIDDEN)) visible++;
+          if (!lv_obj_has_flag(id(st_btn_12), LV_OBJ_FLAG_HIDDEN)) visible++;
+          int rows = (visible + 1) / 2;
+          if (rows < 1) rows = 1;
+          lv_obj_set_height(id(st_grid), rows * 56);
+
+  # ---------------------------------------------------------------------------
+  # Play the station selected by the `current_station` global. Routing:
+  #   - HA connected: homeassistant.action play_media - required because the HA
+  #                   template sensors use media-source:// URLs only HA resolves.
+  #   - no-HA mode:   native media_player.play_media with the direct
+  #                   offline_station_N_url substitutions (no HA involved).
+  # ---------------------------------------------------------------------------
+  - id: play_station
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(ha_connected);'
+          then:
+            - homeassistant.action:
+                action: media_player.play_media
+                data:
+                  entity_id: media_player.esp_media_player
+                  media_content_id: !lambda |-
+                    int s = id(current_station);
+                    if (s == 1) return id(station_1_url).state.c_str();
+                    if (s == 2) return id(station_2_url).state.c_str();
+                    if (s == 3) return id(station_3_url).state.c_str();
+                    if (s == 4) return id(station_4_url).state.c_str();
+                    if (s == 5) return id(station_5_url).state.c_str();
+                    if (s == 6) return id(station_6_url).state.c_str();
+                    if (s == 7) return id(station_7_url).state.c_str();
+                    if (s == 8) return id(station_8_url).state.c_str();
+                    if (s == 9) return id(station_9_url).state.c_str();
+                    if (s == 10) return id(station_10_url).state.c_str();
+                    if (s == 11) return id(station_11_url).state.c_str();
+                    return id(station_12_url).state.c_str();
+                  media_content_type: "audio/mpeg"
+          else:
+            - media_player.play_media:
+                id: esp_media_player
+                media_url: !lambda |-
+                  int s = id(current_station);
+                  if (s == 1) return "${offline_station_1_url}";
+                  if (s == 2) return "${offline_station_2_url}";
+                  if (s == 3) return "${offline_station_3_url}";
+                  return "${offline_station_4_url}";
+            - lvgl.label.update:   # no HA metadata offline - show our own title
+                id: mp_station_title
+                text: !lambda |-
+                  int s = id(current_station);
+                  if (s == 1) return "${offline_station_1_name}";
+                  if (s == 2) return "${offline_station_2_name}";
+                  if (s == 3) return "${offline_station_3_name}";
+                  return "${offline_station_4_name}";
+      - lvgl.page.show: ${homepage}   # back to Now Playing after selection
+
+api:
+  on_client_connected:
+    - logger.log: "HA API connected"
+    - if:
+        condition:
+          lambda: 'return (0 == client_info.find("Home Assistant "));'
+        then:
+          - lvgl.widget.show: lbl_hastatus
+          - lambda: 'id(ha_connected) = true;'
+          - script.execute: update_clock
+          # wait for the station-name sensor states to arrive, then repopulate
+          # the Stations page with the HA names
+          - delay: 500ms
+          - script.execute: refresh_stations
+  on_client_disconnected:
+  - logger.log: "HA API disconnected"
+  - if:
+      condition:
+        lambda: 'return (0 == client_info.find("Home Assistant "));'
+      then:
+        - lvgl.widget.hide: lbl_hastatus
+        - lambda: 'id(ha_connected) = false;'
+        - script.execute: update_clock
+        - script.execute: refresh_stations
+
+wifi:    
+  on_connect:
+    - logger.log: "WiFi connected"
+    - lvgl.widget.hide: boot_screen
+    - lvgl.widget.show: wifi_status
+    - lvgl.label.update:
+        id: wifi_status
+        text: "${text_wifi}"
+    - lambda: 'id(wifi_connected) = true;'
+    - script.execute: update_clock
+    - script.execute: refresh_stations   # offline names first; HA names arrive on api connect
+    # Safety net: if we reconnect while the AP setup page is still up,
+    # return to Now Playing immediately (the interval is dormant while connected).
+    - if:
+        condition:
+          lambda: 'return id(ap_page_shown);'
+        then:
+          - script.stop: blink_wifi_status
+          - lvgl.widget.show: top_layer
+          - lvgl.page.show: ${homepage}
+          - lambda: 'id(ap_page_shown) = false;'
+  on_disconnect:
+    - logger.log: "WiFi disconnected"
+    - lvgl.widget.hide: wifi_status
+    - lambda: 'id(wifi_connected) = false;'
+    - script.execute: update_clock
+    
+ota:        # OTA progress bar popup
+  - platform: esphome
+    on_begin:
+      then:
+        - logger.log: "OTA started"
+        - if:
+            condition: lvgl.is_paused
+            then:
+              - logger.log: "LVGL resuming"          
+              - lvgl.resume:
+              - lvgl.widget.redraw:
+              - light.turn_on: backlight
+        - lvgl.widget.show: ota_popup
+        - lambda: "id(backlight).loop();"
+        - lambda: "id(mylvgl).loop();"
+    on_progress:
+        then:
+          - lvgl.bar.update:
+              id: ota_bar_percentage
+              value: !lambda "return (int)x;"
+          - lvgl.label.update:
+              id: ota_lbl_percentage
+              text:
+                format: "завершено %0.1f%%"
+                args: ["x"]
+          - lambda: "id(backlight).loop();"
+          - lambda: "id(mylvgl).loop();"
+
+# ---------------------------------------------------------------------------
+# AP state watcher: always-on; polls wifi.ap_active every 500 ms only while
+# the station is offline (guarded by `wifi_connected`) with rising/falling-
+# edge detection into the `ap_active` global. Always-on so the boot -> fallback
+# AP window is covered even when no router is ever found (wifi.on_disconnect
+# does not fire when the device never connected; interval.start/stop are not
+# valid ESPHome actions).
+# ---------------------------------------------------------------------------
+interval:
+  - id: ap_state_watch
+    interval: 500ms
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(wifi_connected);'
+          then:
+            - if:
+                condition: wifi.ap_active
+                then:
+                  - if:
+                      condition:
+                        lambda: 'return !id(ap_active);'
+                      then:                    # rising edge: AP just became active
+                        - lambda: 'id(ap_active) = true;'
+                        - script.execute: enter_ap_mode
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(ap_active);'
+                      then:                    # falling edge: AP just ended
+                        - lambda: 'id(ap_active) = false;'
+                        - script.execute: exit_ap_mode
+
+# ---------------------------------------------------------------------------
+# LVGL framework
+# ---------------------------------------------------------------------------
+lvgl:
+  id: mylvgl
+  rotation: 90 #landscape mode
+  displays:
+    - main_display
+  touchscreens:
+    - touchscreen_id: main_touch
+  on_idle:   # turn off backlight on idle (skipped while AP mode is active)
+    - timeout: ${idle_timeout}
+      then:
+        - if:
+            condition:
+              not:
+                - wifi.ap_active
+            then:
+              - logger.log: LVGL is idle for ${idle_timeout}
+              - light.turn_off:
+                  id: backlight
+                  transition_length: 5s
+              - lvgl.pause:
+                  show_snow: true     # LCD burnout protection
+
+  default_font: f_body
+  buffer_size: 25%
+
+  bottom_layer:
+    bg_color: ${color_surface_alt}
+    bg_opa: COVER
+
+  top_layer:        # for cross-page status indicators and buttons
+    # Swipe navigation moved to the pages via common/swipe_navigation.yaml:
+    # the top_layer never receives gesture events (see logs/log_2040.txt).
+    widgets:
+      - obj:      # boot screen with rotating arc till wifi connects
+          id: boot_screen
+          x: 0
+          y: 0
+          width: 100%
+          height: 100%
+          bg_color: ${color_surface}
+          bg_opa: COVER
+          radius: 0
+          pad_all: 0
+          border_width: 0
+          widgets:
+            - spinner:
+                align: CENTER
+                height: 100
+                width: 100
+                spin_time: 1s
+                arc_length: 60deg
+                arc_width: 16
+                indicator:
+                  arc_color: ${color_accent}
+                  arc_width: 16
+          on_press:
+            - lvgl.widget.hide: boot_screen
+      - obj:      # OTA popup
+          id: ota_popup
+          hidden: true
+          clickable: false
+          x: 0
+          y: 0
+          width: 100%
+          height: 100%
+          pad_all: 10
+          bg_color: ${color_panel}
+          bg_opa: cover
+          widgets:
+            - label:
+                id: ota_lbl_title
+                x: 2
+                y: 2
+                text: "Идёт обновление"
+            - label:
+                id: ota_lbl_percentage
+                x: 2
+                y: 30
+                width: 100%
+                text: "0 %"
+            - bar:
+                id: ota_bar_percentage
+                x: 2
+                y: 60
+                width: 100%
+                height: 10
+                max_value: 100
+                min_value: 0
+                value: 0
+      - label:        # current time (HH:MM); source per `update_clock` script
+          id: lbl_time
+          hidden: true
+          align: TOP_MID
+          y: 2
+          text: "00:00"
+          text_font: ${font_body}
+          text_color: ${color_text_primary}
+      - label:        # WiFi status (plain wifi glyph while connected)
+          id: wifi_status
+          hidden: true
+          align: TOP_RIGHT
+          x: -5
+          y: 0
+          text: "${text_wifi}"
+          text_font: menu24
+          text_align: right
+          text_color: ${color_text_primary}
+      - label:        # HA API connection status
+          id: lbl_hastatus
+          hidden: true
+          align: TOP_RIGHT
+          x: -35
+          y: 0
+          text: ${text_hastatus}
+          text_font: menu24
+          text_align: right
+          text_color: ${color_accent}
+      - buttonmatrix:     # cross-page buttons
+          align: bottom_mid
+          styles: header_footer
+          pad_all: 0
+          outline_width: 0
+          id: top_layer
+          items:
+            styles: header_footer
+          rows:
+            - buttons:
+              - id: page_prev
+                text: ${text_prev}
+                on_press:
+                  then:
+                    - if:
+                        condition:
+                          not:
+                            - wifi.ap_active
+                        then:
+                          - lvgl.page.previous:
+              - id: page_home
+                text: ${text_home}
+                on_press:
+                  then:
+                    - if:
+                        condition:
+                          not:
+                            - wifi.ap_active
+                        then:
+                          - lvgl.page.show: ${homepage}
+              - id: page_next
+                text: ${text_next}
+                on_press:
+                  then:
+                    - if:
+                        condition:
+                          not:
+                            - wifi.ap_active
+                        then:
+                          - lvgl.page.next:
+  page_wrap: true

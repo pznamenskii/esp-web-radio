@@ -1,0 +1,15 @@
+# Real credentials must never be committed
+secrets_radio.yaml
+
+# ESPHome build artifacts
+/.esphome/
+/build/
+*.pioenvs/
+*.piolibdeps/
+!packages/
+
+# VS Code / editor
+.vscode/
+.idea/
+/logs/
+/designer/
