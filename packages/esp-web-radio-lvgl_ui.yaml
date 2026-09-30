@@ -9,7 +9,7 @@
 # ==============================================================================
 
 substitutions:
-  idle_timeout:          15s
+  idle_timeout:          30s
   lbl_text_font:         menu24
   btnmtrx_text_font:     menu24
   homepage:              page_now_playing

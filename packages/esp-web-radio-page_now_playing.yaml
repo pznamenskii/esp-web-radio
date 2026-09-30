@@ -251,7 +251,7 @@ lvgl:
                   y: 65
                   width: 344
                   height: 26
-                  text: "JVKE"
+                  text: ""
                   text_align: LEFT
                   long_mode: SCROLL
                   text_font: ${font_icon}
@@ -264,7 +264,7 @@ lvgl:
                   y: 95
                   width: 344
                   height: 36
-                  text: "this is what ____ feels like"
+                  text: ""
                   text_align: LEFT
                   long_mode: SCROLL
                   text_font: ${font_small}
