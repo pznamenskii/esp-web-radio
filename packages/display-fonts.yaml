@@ -30,9 +30,7 @@ font:
     id: menu24
     size: 24
     bpp: 4
-    glyphsets:
-      - GF_Latin_Core
-      - GF_Cyrillic_Core
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяЁё«»—–°"
     extras:
       - file: 'fonts/materialdesignicons-webfont.ttf'
         glyphs: [
@@ -59,9 +57,7 @@ font:
     id: roboto42
     size: 42
     bpp: 4
-    glyphsets:
-      - GF_Latin_Core
-      - GF_Cyrillic_Core
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяЁё«»—–°"
   - file: "gfonts://Roboto"
     id: f_title
     size: 26
