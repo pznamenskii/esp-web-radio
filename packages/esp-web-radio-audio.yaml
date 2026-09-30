@@ -85,7 +85,7 @@ media_player:
     # Compile ALL decoders (FLAC/MP3/OPUS/WAV). With `format: FLAC` alone only
     # the FLAC decoder is built, so direct MP3 URLs (wifi-only mode) fail with
     # ESP_ERR_NOT_SUPPORTED; HA mode still works because HA transcodes to FLAC.
-    codec_support_enabled: ALL
+#    codec_support_enabled: ALL
     media_pipeline:
       speaker: main_media_resampler
       format: NONE          # <-- Включает все декодеры (MP3, FLAC, OPUS, WAV)
