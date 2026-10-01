@@ -52,9 +52,10 @@ esphome:
     # Visualizer toggle: sync the Settings switch widget with the restored
     # `visualizer_enabled` global. If this fires on_value it only re-writes the
     # same value (player_playing is false at boot, so no show/hide side effect).
-    - lvgl.switch.update:
+    - lvgl.widget.update:
         id: settings_sw_visualizer
-        value: !lambda 'return id(visualizer_enabled);'
+        state: 
+          checked: !lambda 'return id(visualizer_enabled);'
     # Seed the Info/Settings rows (startup volume, uptime, WiFi signal).
     - script.execute: refresh_settings_info
     # Bottom nav indicator starts focused on the home page.
