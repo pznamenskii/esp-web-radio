@@ -2,9 +2,9 @@ substitutions:
   characters:               " !#%'()+=,-_.:³°/μ0123456789АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧЩЬЫЪЭЮЯABCDEFGHIJKLMNOPQRSTUVWXYZабвгдеёжзийклмнопрстуфхцчщьыъэюяabcdefghijklmnopqrstuvwxyz"
   number_characters:        " :.-0123456789"
   text_hastatus:            "\U000F07D0"
-  text_prev:                "\U000F0CDE"
-  text_next:                "\U000F0CE0"
-  text_home:                "\U000F104D"
+  text_nav_playing:         "\U000F040D"   # mdi-play-circle-outline (nav: Now Playing)
+  text_nav_settings:        "\U000F08D6"   # mdi-cogs (nav: Settings)
+  text_nav_stations:        "\U000F0439"   # mdi-radio (nav: Stations)
   wifi_25:                  "\U000F091F"
   wifi_50:                  "\U000F0922"
   wifi_75:                  "\U000F0925"
@@ -16,8 +16,8 @@ substitutions:
   text_skip_prev:           "\U000F04AE"
   text_skip_next:           "\U000F04AD"
   text_volume_high:         "\U000F057E"
-  text_volume_plus:         "\U000F057F"
-  text_volume_minus:        "\U000F0580"
+  text_volume_plus:         "\U000F075D"
+  text_volume_minus:        "\U000F075E"
   text_volume_off:          "\U000F0581"
 
 # ---------------------------------------------------------------------------
@@ -35,22 +35,49 @@ font:
       - file: 'fonts/materialdesignicons-webfont.ttf'
         glyphs: [
           "\U000F07D0",            # mdi-home-assistant
-          "\U000F0CDE",            # mdi-arrow-left-circle-outline
-          "\U000F0CE0",            # mdi-arrow-right-circle-outline
-          "\U000F104D",            # mdi-home-circle-outline
+          "\U000F040D",            # mdi-play-circle-outline (nav active: Now Playing)
+          "\U000F08D6",            # mdi-cogs (nav active: Settings)
+          "\U000F0439",            # mdi-radio (nav active: Stations)
           "\U000F091F",            # mdi-wifi-strength-1
           "\U000F0922",            # mdi-wifi-strength-2
           "\U000F0925",            # mdi-wifi-strength-3
           "\U000F0928",            # mdi-wifi-strength-4
           "\U000F05A9",            # mdi-wifi
           "\U000F16BE",            # mdi-wifi-cog
+          "\U000F057E",            # mdi-volume-high (reserved)
+        ]
+  # nav20: inactive (smaller) glyphs for the bottom nav indicator; the focused
+  # glyph reuses menu24 (24 px). Only the three nav icons are ever rendered, so
+  # the base glyph set stays minimal to limit flash usage (~3 KB total).
+  - file: "gfonts://Roboto"
+    id: nav20
+    size: 20
+    bpp: 4
+    glyphs: " "
+    extras:
+      - file: 'fonts/materialdesignicons-webfont.ttf'
+        glyphs: [
+          "\U000F040D",            # mdi-play-circle-outline (nav: Now Playing)
+          "\U000F08D6",            # mdi-cogs (nav: Settings)
+          "\U000F0439",            # mdi-radio (nav: Stations)
+        ]
+  # menu32: larger transport/volume icons for the Now Playing control row
+  # (mp_controls). The glyphs moved here from menu24 so the row renders at
+  # 32 px; minimal base set keeps flash usage low (~18 KB for the 7 icons).
+  - file: "gfonts://Roboto"
+    id: menu32
+    size: 32
+    bpp: 4
+    glyphs: " "
+    extras:
+      - file: 'fonts/materialdesignicons-webfont.ttf'
+        glyphs: [
           "\U000F040A",            # mdi-play
           "\U000F03E4",            # mdi-pause
           "\U000F04AE",            # mdi-skip-previous
           "\U000F04AD",            # mdi-skip-next
-          "\U000F057E",            # mdi-volume-high
-          "\U000F057F",            # mdi-volume-plus
-          "\U000F0580",            # mdi-volume-minus
+          "\U000F075D",            # mdi-volume-plus
+          "\U000F075E",            # mdi-volume-minus
           "\U000F0581",            # mdi-volume-off
         ]
   - file: "gfonts://Roboto"

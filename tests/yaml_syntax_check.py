@@ -2,15 +2,27 @@ import sys
 import yaml
 from pathlib import Path
 
+# Project root = parent of the tests/ directory (independent of the CWD).
+ROOT = Path(__file__).resolve().parent.parent
+
 
 def _include(loader, node):
     """Resolve `!include path.yaml` relative to the INCLUDING file's directory,
     mirroring ESPHome (yaml_util.py IncludeFile.load uses parent_file.parent).
     Recursively loads the target with the same loader class.
+
+    Fallback for the ESPHome Device Builder layout: the main config includes
+    `esp-web-radio/packages/...` while the project folder itself IS
+    `esp-web-radio/`, so a missing `esp-web-radio/`-prefixed path is retried
+    against the project root with that one leading segment stripped.
     """
     file = str(loader.construct_scalar(node))
     here = Path(loader.stream.name).parent
     target = (here / file).resolve()
+    if not target.is_file():
+        parts = file.split('/')
+        if len(parts) > 1 and parts[0] == ROOT.name:
+            target = (ROOT / '/'.join(parts[1:])).resolve()
     with target.open(encoding='utf-8') as fh:
         return next(yaml.load_all(fh, Loader=L))
 
@@ -88,10 +100,13 @@ files = [
     'esp-web-radio.yaml',
     'packages/lvgl_theme.yaml',
     'packages/display-fonts.yaml',
+    'packages/esp-web-radio-hardware.yaml',
+    'packages/esp-web-radio-audio.yaml',
     'packages/esp-web-radio-lvgl_ui.yaml',
     'packages/esp-web-radio-page_now_playing.yaml',
     'packages/esp-web-radio-page_stations.yaml',
     'packages/esp-web-radio-page_ap_setup.yaml',
+    'packages/esp-web-radio-page_settings.yaml',
     'packages/esp-web-radio-offline_stations.yaml',
     'packages/esp-web-radio-homeassistant.yaml',
     'packages/common-colors.yaml',

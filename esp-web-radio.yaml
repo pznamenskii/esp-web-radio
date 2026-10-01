@@ -18,13 +18,20 @@ esphome:
   friendly_name: ESP Internet Radio
   comment: "ESP32-S3 WiFi internet radio (JC3248W535C display + PCM5102 DAC)"
   on_boot:
-#    priority: 700
-#    - output.turn_off: sck_gnd
-#    - delay: 500ms
     - lvgl.page.show: page_now_playing
     - light.turn_on: backlight
     - lambda: 'id(boot_done) = true;'
     - script.execute: refresh_stations   # populate the Stations page for the current mode
+    - script.execute: sync_volume_ui     # boot volume restore -> mirror + popup UI
+    # Info/Settings page: capture the volume restored at boot (component
+    # restore happens during setup, before on_boot, so volume_level is already
+    # the persisted value) and seed the info rows (startup volume, uptime,
+    # WiFi signal).
+    - lambda: 'id(startup_volume) = id(volume_level);'
+    - script.execute: refresh_settings_info
+    # Bottom nav indicator starts focused on the home page.
+    - lambda: 'id(current_page) = 0;'
+    - script.execute: update_nav_indicator
 
   platformio_options:
     upload_speed: 921600
@@ -67,7 +74,6 @@ psram:
 packages:
   hardware:       !include esp-web-radio/packages/esp-web-radio-hardware.yaml
   audio:          !include esp-web-radio/packages/esp-web-radio-audio.yaml
-#  radio_core:     !include packages/esp-web-radio-radio_core.yaml
   homeassistant:  !include esp-web-radio/packages/esp-web-radio-homeassistant.yaml
   offline_stations: !include esp-web-radio/packages/esp-web-radio-offline_stations.yaml
   lvgl_ui:        !include esp-web-radio/packages/esp-web-radio-lvgl_ui.yaml
@@ -77,7 +83,7 @@ packages:
   page_now_playing: !include esp-web-radio/packages/esp-web-radio-page_now_playing.yaml
   page_stations:  !include esp-web-radio/packages/esp-web-radio-page_stations.yaml
   page_ap_setup: !include esp-web-radio/packages/esp-web-radio-page_ap_setup.yaml
-#  swipe:         !include packages/swipe_navigation.yaml
+  page_settings:  !include esp-web-radio/packages/esp-web-radio-page_settings.yaml
 
 # ---------------------------------------------------------------------------
 # Connectivity
@@ -103,16 +109,6 @@ api:
 
 ota:
   - platform: esphome
-#    password: !secret ota_password
-
-# Web interface (control entities + REST API). Edit the presets here: the
-# "Preset N Name / Preset N URL" text fields are shown as editable inputs.
-#web_server:
-#  port: 18080
-#  version: 2
-#  auth:
-#    username: admin
-#    password: !secret ota_password
 
 globals:
   - id: boot_done

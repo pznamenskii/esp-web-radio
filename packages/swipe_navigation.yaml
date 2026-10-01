@@ -1,18 +1,19 @@
 # ==============================================================================
 # swipe_navigation.yaml - shared page swipe handlers
 #
-# Included by every navigable page via:
-#   <<: !include swipe_navigation.yaml
+# Included by every navigable page via `<<: !include swipe_navigation.yaml`.
+# Handlers live on the PAGES, not on top_layer: LVGL delivers gesture events
+# to the object under the finger (page content) and bubbles them up to the page
+# screen; top_layer never receives them (logs/log_2040.txt).
 #
-# Why the handlers live on the PAGES and not on top_layer: LVGL delivers
-# gesture (LV_EVENT_GESTURE) events to the object under the finger — the page
-# content — and bubbles them up to the page screen. top_layer never receives
-# them (validated empirically in logs/log_2040.txt: page-level probes fired
-# while the top_layer handlers stayed completely silent).
+# wifi.ap_active guard: no navigation while the fallback AP / setup page is
+# active; page_ap_setup has `skip: true` and does not include this file.
 #
-# The wifi.ap_active guard keeps navigation out while the fallback AP / setup
-# page is active; page_ap_setup itself has `skip: true` and does NOT include
-# this file, so it can never be reached by swiping.
+# After each swipe the bottom nav indicator is refocused using modulo
+# `${swipeable_page_count}` math: three swipeable pages now - Now Playing(0),
+# Stations(1), Settings(2); `page_wrap: true` wraps around (left from Settings
+# -> Now Playing, right from Now Playing -> Settings). page_ap_setup is skipped
+# by lvgl.page.next/previous so it never enters the sequence.
 # ==============================================================================
 
 on_swipe_left:
@@ -25,6 +26,8 @@ on_swipe_left:
         - lvgl.page.next:
             animation: OUT_LEFT
             time: 300ms
+        - lambda: 'id(current_page) = (id(current_page) + 1) % ${swipeable_page_count};'
+        - script.execute: update_nav_indicator
 
 on_swipe_right:
   - if:
@@ -36,3 +39,5 @@ on_swipe_right:
         - lvgl.page.previous:
             animation: OUT_RIGHT
             time: 300ms
+        - lambda: 'id(current_page) = (id(current_page) + ${swipeable_page_count} - 1) % ${swipeable_page_count};'
+        - script.execute: update_nav_indicator

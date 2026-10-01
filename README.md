@@ -25,18 +25,18 @@ ESP32-S3 WiFi internet radio with a 480×320 LVGL touchscreen UI, I2S output to 
 - **Now Playing page** — full 480×320 LVGL page showing:
   - Station title, artist, and track labels (long text scrolls; artist/track auto-hide when empty)
   - The station logo / album-art panels and the visualizer strip hide automatically whenever their data is absent (logo waits for the station-picture roadmap item; art follows the `media_image_url` attribute; the visualizer shows only while playing)
-  - Progress bar plus elapsed (`mm:ss`) and total (`mm:ss`) time labels
-  - Transport controls: station prev/next, play/pause, mute, and a volume slider
-- **Stations page** — a third LVGL page listing every available station as a button: a dynamic 2×6 grid (up to 12 slots) filled from the HA station-name sensors while the API is connected, or from the hardcoded offline list when it is not. Empty slots hide automatically; a vertical scrollbar appears once more than 8 stations are active; pressing a station plays it and returns to Now Playing.
+  - Progress bar plus elapsed (`mm:ss`) and total (`mm:ss`) time labels — the whole cluster hides while its data is absent (elapsed needs a media position; total and the bar need a media duration; `on_idle` re-hides everything when the player stops)
+  - Transport controls: station prev/next, play/pause, mute (-/+ with a popup slider)
+- **Stations page** — a second LVGL page listing every available station as a button: a dynamic 2×6 grid (up to 12 slots) filled from the HA station-name sensors while the API is connected, or from the hardcoded offline list when it is not. Empty slots hide automatically; a vertical scrollbar appears once more than 8 stations are active; pressing a station plays it and returns to Now Playing.
+- **Info/Settings page** — the third swipeable LVGL page with device info: **WiFi signal level** (signal-strength icon `wifi_25/50/75/100` picked by RSSI thresholds −50/−65/−78 dBm plus a numeric dBm label; driven by the local `wifi_signal` sensor, which measures the ESP32 radio itself — so it also works in wifi-only/no-HA mode), **uptime** (`uptime` + `uptime_human`, formatted days/hours/minutes), and the **startup volume** (the `startup_volume` global captured in `on_boot` right after `sync_volume_ui` restores the persisted volume, shown as a percentage). The page uses only glyphs already embedded in `menu24` (cogs, wifi-strength, volume-high), so it adds no flash cost.
 - **No-HA local stations** — with WiFi up but the Home Assistant API unreachable, the Stations page falls back to the built-in list in [`packages/esp-web-radio-offline_stations.yaml`](packages/esp-web-radio-offline_stations.yaml) and playback goes straight to the direct stream URL via the local media player. When HA reconnects, station names and playback routing switch back to Home Assistant automatically.
 - **Home Assistant integration** — encrypted native API; the player, DAC mute switch, and media info are exposed automatically. A status indicator in the top layer (`lbl_hastatus`, `mdi-home-assistant` glyph) appears when a Home Assistant client connects and disappears on disconnect.
 - **Clock with local fallback** — the title-bar clock (`lbl_time`) shows HA-provided time while the API is connected; when WiFi is up but HA is not, it falls back to an NTP-maintained local clock (`sntp`, `pool.ntp.org` / `time.google.com`); with no WiFi the clock hides. See [Time sync & device modes](#time-sync--device-modes).
 - **OTA updates** — ESPHome OTA with an on-screen popup showing a live progress bar and percentage (`ota_popup` with `ota_bar_percentage` / `ota_lbl_percentage`).
-- **Swipe / page navigation** — swipe left/right flips pages with `OUT_LEFT` / `OUT_RIGHT` animations (300 ms); a persistent bottom `buttonmatrix` in the LVGL `top_layer` provides prev / home / next page buttons on every page. `page_wrap: true` wraps around.
+- **Swipe / page navigation** — swipe left/right cycles the three navigable pages (Now Playing → Stations → Settings) with `OUT_LEFT` / `OUT_RIGHT` animations (300 ms); a transparent bottom **nav glyph indicator** in the LVGL `top_layer` marks the active page (the focused glyph renders larger than the others). `page_wrap: true` wraps around.
 - **WiFi setup (AP mode) page** — when the fallback access point + captive portal becomes active (`wifi.ap_active`), the display switches to a locked `page_ap_setup` page showing the AP network name (`ap_ssid`, default "ESP Radio Fallback"), the AP password (from `!secret ap_password`, shown via `ap_password_display`), the setup URL (`${ap_url}`, default http://192.168.4.1), and a scannable **QR code** (`ap_qr`) encoding the WiFi connection string `WIFI:T:WPA;S:${ap_ssid};P:${ap_password};;` — scanning it joins the fallback AP directly. The page cannot be swiped/navigated away from and clears automatically back to Now Playing when the station reconnects; while it is up, the top-layer `wifi_status` icon blinks the `wifi-cog` glyph at ~400 ms and the LVGL idle timer is disabled so the page stays lit. See [UI architecture & page bindings](#ui-architecture--page-bindings).
-- **Boot & idle UX** — spinner boot screen stays up until the first of: user touch, WiFi connects, or AP mode becomes active (shows the setup page instead). After 15 s of inactivity the backlight fades out and LVGL pauses with a "snow" pattern (LCD burn-in protection); any touch wakes the device. Idle never triggers while the fallback AP + captive portal are active (`wifi.ap_active`), so the setup page stays lit.
+- **Boot & idle UX** — spinner boot screen stays up until the first of: user touch, WiFi connects, or AP mode becomes active (shows the setup page instead). After 15 s of inactivity the backlight fades out and LVGL pauses with a "snow" pattern (LCD burn-in protection); any touch wakes the device — waking returns straight to the Now Playing page (the "idle screen"). Idle never triggers while the fallback AP + captive portal are active (`wifi.ap_active`), so the setup page stays lit.
 - **Dark-orange LVGL theming** — a centralized theme in [`packages/lvgl_theme.yaml`](packages/lvgl_theme.yaml) drives widget defaults and shared named styles (see [Theming system](#theming-system)).
-- **Web interface** — built-in `web_server` (port 18080, v2, admin auth) for controlling entities via REST.
 
 ---
 
@@ -111,10 +111,11 @@ esphome config esp-web-radio.yaml --secrets secrets_radio.yaml
 esphome run esp-web-radio.yaml --secrets secrets_radio.yaml
 ```
 
-You can also run the lightweight YAML syntax check helper (pure Python, ignores ESPHome tags):
+You can also run the lightweight helpers (pure Python, ignore ESPHome tags):
 
 ```bash
-python tests/yaml_syntax_check.py
+python tests/yaml_syntax_check.py      # YAML syntax for every config file
+python tests/font_codepoint_check.py   # every MDI codepoint exists in the webfont
 ```
 
 ---
@@ -124,7 +125,7 @@ python tests/yaml_syntax_check.py
 ```
 esp-web-radio/
 ├── esp-web-radio.yaml                     # Entry point: platform, board, flash/PSRAM,
-│                                          #   packages list, wifi/api/ota/web_server,
+│                                          #   packages list, wifi/api/ota,
 │                                          #   globals, on_boot
 ├── ha_template_sensors.yaml               # Home Assistant-side template sensors defining
 │                                          #   4 station presets (Name + URL, radio_browser)
@@ -150,14 +151,14 @@ esp-web-radio/
 │   │                                      #   DAC mute switch, media_player esp_media_player
 │   ├── esp-web-radio-homeassistant.yaml   # time sources (HA + NTP), station_1..4_url sensors,
 │   │                                      #   station_1..12_name sensors, now_playing/artist/
-│   │                                      #   track + art presence, player_state, volume/
+│   │                                      #   track + art presence, player_state,
 │   │                                      #   position/duration, current_station global
 │   ├── esp-web-radio-offline_stations.yaml# Hardcoded station names + direct URLs for no-HA
 │   │                                      #   mode (fallback when the HA API is unreachable)
 │   ├── esp-web-radio-lvgl_ui.yaml         # LVGL framework (rotation, idle, buffers),
 │   │                                      #   top-layer status widgets, boot screen, OTA popup,
-│   │                                      #   swipe + bottom nav buttonmatrix, connectivity
-│   │                                      #   flags + `update_clock` script + the
+│   │                                      #   bottom nav glyph indicator, connectivity flags +
+│   │                                      #   `update_clock` / `update_nav_indicator` /
 │   │                                      #   `refresh_stations` / `play_station` scripts
 │   ├── esp-web-radio-page_now_playing.yaml# The main UI page: geometry + widget bindings
 │   ├── esp-web-radio-page_stations.yaml   # Stations page: dynamic 2x6 station button grid,
@@ -165,6 +166,9 @@ esp-web-radio/
 │   ├── esp-web-radio-page_ap_setup.yaml   # AP mode / WiFi setup page: shown when the
 │   │                                      #   fallback AP + captive portal are active —
 │   │                                      #   SSID, password, setup URL; locked page
+│   ├── esp-web-radio-page_settings.yaml   # Info/Settings page: WiFi signal + dBm,
+│   │                                      #   uptime, startup volume; idle/wake
+│   │                                      #   behavior (third swipeable page)
 │   ├── lvgl_theme.yaml                    # Central dark-orange palette, lvgl.theme defaults,
 │   │                                      #   shared style_definitions
 │   ├── display-fonts.yaml                 # Font strategy: Roboto gfonts, Cyrillic coverage,
@@ -191,7 +195,7 @@ The main config uses these secrets (all `!secret` usages in [`esp-web-radio.yaml
 | `wifi_password` | `wifi:` |
 | `ap_password` | fallback AP ("ESP Radio Fallback") of `wifi:`; also shown on the AP setup page via the `ap_password_display` substitution and encoded into the AP-mode WiFi-connection QR (`WIFI:` string) |
 | `api_encryption_key` | encrypted `api:` |
-| `ota_password` | `ota:` **and** `web_server` HTTP auth (user `admin`) |
+| `ota_password` | `ota:` |
 | `timezone` | `time:` platforms `homeassistant` + `sntp` in [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-homeassistant.yaml) |
 
 > **Security:** never commit real values. `secrets_radio.yaml` is git-ignored and must be supplied to ESPHome with `--secrets secrets_radio.yaml`.
@@ -229,13 +233,13 @@ Plus font aliases: `font_body` → `f_body`, `font_small` → `f_small`, `font_t
 
 ### `lvgl.theme` per-widget defaults
 
-`dark_mode: true` with defaults for `label`, `button` (orange vertical gradient, pressed `0xEA580C`/`0x9A3412`), `buttonmatrix` (panel-gradient items, themed fonts), `switch`, `slider`, `bar` (orange indicator at 80% opacity), `arc`, and `spinner`.
+`dark_mode: true` with defaults for `label`, `button` (orange vertical gradient, pressed `0xEA580C`/`0x9A3412`), `switch`, `slider`, `bar` (orange indicator at 80% opacity), `arc`, and `spinner`.
 
 ### Shared `style_definitions`
 
 Named styles referenced by pages with `styles: <name>`:
 
-`header_footer`, `card`, `panel`, `icon_button`, `primary_button`, `text_primary`, `text_muted`, `text_title`, `text_body`, `text_small`, `controls_row`.
+`card`, `panel`, `icon_button`, `primary_button`, `text_primary`, `text_muted`, `text_title`, `text_body`, `text_small`, `controls_row`, `station_button`.
 
 ### Theming rule
 
@@ -247,7 +251,7 @@ Pages and elements should reference **shared styles and color substitutions** (`
 
 ### Layout
 
-Three navigable pages (480×320 landscape, LVGL `rotation: 90`), all declared under `lvgl.pages` and driven by the framework block in [`packages/esp-web-radio-lvgl_ui.yaml`](packages/esp-web-radio-lvgl_ui.yaml): **Now Playing**, **Stations**, and the locked **AP setup** page. The AP page is `skip: true`, so prev/next buttons and swipe gestures cycle only between Now Playing and Stations:
+Three swipeable pages (480×320 landscape, LVGL `rotation: 90`), declared under `lvgl.pages` and driven by the framework block in [`packages/esp-web-radio-lvgl_ui.yaml`](packages/esp-web-radio-lvgl_ui.yaml): **Now Playing**, **Stations** and **Settings**, plus the locked **AP setup** page (`skip: true`, excluded from `lvgl.page.next/previous`). Swipe gestures (and `page_wrap: true`) cycle Now Playing ↔ Stations ↔ Settings:
 
 [`packages/esp-web-radio-page_now_playing.yaml`](packages/esp-web-radio-page_now_playing.yaml) defines `page_now_playing`:
 
@@ -255,25 +259,46 @@ Three navigable pages (480×320 landscape, LVGL `rotation: 90`), all declared un
 - Visualizer panel strip
 - Progress bar + elapsed/total time labels
 - Control row: prev, play/pause, next, mute, volume slider
-- Persistent top layer: boot screen (dismissed by touch, `wifi.on_connect`, or AP mode), OTA popup, WiFi status icon, HA status icon, bottom nav `buttonmatrix`
+- Persistent top layer: boot screen (dismissed by touch, `wifi.on_connect`, or AP mode), OTA popup, WiFi status icon, HA status icon, bottom nav glyph indicator
 
 #### Stations page (`page_stations`)
 
-[`packages/esp-web-radio-page_stations.yaml`](packages/esp-web-radio-page_stations.yaml) defines `page_stations`, reachable via the bottom-nav **next** button or a right swipe:
+[`packages/esp-web-radio-page_stations.yaml`](packages/esp-web-radio-page_stations.yaml) defines `page_stations`, reachable by a right swipe (or any next-page action):
 
 - Dynamic 2×6 button grid (12 slots `st_btn_1`..`st_btn_12`). The `refresh_stations` script fills each slot's label from the HA `station_N_name` sensors while the API is connected, otherwise from the hardcoded `offline_station_N_name` substitutions in [`packages/esp-web-radio-offline_stations.yaml`](packages/esp-web-radio-offline_stations.yaml).
 - Empty slots stay hidden and the grid height is set to the number of visible rows × 56 px, so a vertical scrollbar appears automatically once more than 8 stations are active.
 - Pressing a station runs the `play_station` script: playback goes through Home Assistant while connected (the HA template sensors use `media-source://radio_browser/…` URLs that only HA can resolve) or through the native `media_player.play_media` action with the direct offline URL in no-HA mode; the page then returns to Now Playing.
+
+#### Info/Settings page (`page_settings`)
+
+[`packages/esp-web-radio-page_settings.yaml`](packages/esp-web-radio-page_settings.yaml) defines `page_settings`, the third swipeable page (reached by a left swipe from Stations; wraps to Now Playing). Fixed 3-row info layout ending at y=214 (above the bottom nav bar at y=294); static-layout contract (hide/show only):
+
+- **WiFi signal** — a `wifi_signal` sensor (ESPHome `platform: wifi_signal`, re-added to [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-homeassistant.yaml)) feeds the `refresh_settings_info` script, which picks the signal-strength glyph by threshold (`wifi_100` ≥ −50 dBm, `wifi_75` ≥ −65 dBm, `wifi_50` ≥ −78 dBm, else `wifi_25`) and shows the numeric dBm label. Because the sensor measures the ESP32's own radio, the row works identically in HA-connected and wifi-only modes; while disconnected the icon dims to the lowest bar and the dBm label hides.
+- **Uptime** — the `uptime` sensor (re-added) drives the `uptime_human` template text sensor (re-added), formatted `Xd Xh Xm` / `Xh Xm` / `Xm`; the label updates every 60 s via `refresh_settings_info`.
+- **Startup volume** — the `startup_volume` global is captured in `on_boot` (in [`esp-web-radio.yaml`](esp-web-radio.yaml)) immediately after `sync_volume_ui` reads the component-restored volume (component restore happens during setup, before `on_boot`); the row displays it as a percentage.
+- **Idle/inactivity behavior** (no settings row — behavior, not data): the volume popup auto-dismisses after 5 s of inactivity (`show_volume_popup`, `mode: restart`) and waking the device from global idle (LVGL `on_idle` sleep) returns to Now Playing — implemented inside the native `touchscreen.on_release` wake handler ([`packages/esp-web-radio-hardware.yaml`](packages/esp-web-radio-hardware.yaml)) that performs `lvgl.resume`, without extra timer scripts.
+
+The page title uses the cogs glyph (`text_nav_settings`) and all icons come from glyphs already embedded in `menu24` — no new font entries, no flash cost.
 
 #### AP setup page (`page_ap_setup`)
 
 [`packages/esp-web-radio-page_ap_setup.yaml`](packages/esp-web-radio-page_ap_setup.yaml) adds `page_ap_setup`, auto-shown when the fallback AP + captive portal become active (`wifi.ap_active`, watched by the `ap_state_watch` interval polling every 500 ms):
 
 - Two-column layout: an info panel (left) shows the AP **network name** (`${ap_ssid}`, default "ESP Radio Fallback"), the **password** (`${ap_password_display}`, from `!secret ap_password`), and the setup **URL** — single-sourced from the `${ap_url}` substitution in [`esp-web-radio.yaml`](esp-web-radio.yaml), default http://192.168.4.1. The right column holds a scannable **QR code** (`ap_qr` qrcode widget, inverted light-on-dark modules) encoding the WiFi connection string `WIFI:T:WPA;S:${ap_ssid};P:${ap_password};;` so a phone can join the fallback AP without typing the credentials.
-- Locked: declared `skip: true` (excluded from `lvgl.page.next/previous`) and the swipe / prev / home / next handlers are guarded while `wifi.ap_active`, so the page cannot be navigated away from; the bottom nav bar is hidden while it is shown.
+- Locked: declared `skip: true` (excluded from `lvgl.page.next/previous`) and the swipe handlers are guarded while `wifi.ap_active`, so the page cannot be navigated away from; the bottom nav indicator is hidden while it is shown.
 - While it is up, the `wifi_status` label blinks the `wifi-cog` glyph at ~400 ms (`blink_wifi_status` script; icon set via `lvgl.label.update` in `enter_ap_mode`).
 - Idle/sleep is disabled while `wifi.ap_active` (the `on_idle` handler is guarded), so the QR/SSID/password stay readable for as long as the setup page is needed.
 - Clears automatically when the station reconnects — `exit_ap_mode` restores the plain `wifi` glyph, returns to `${homepage}` (Now Playing), and `wifi_status` settles back to its steady state.
+
+#### Bottom nav indicator (`top_layer`)
+
+The old prev/home/next buttonmatrix was replaced (TODO "Re-design navigation bar on top_layer") by a **pure indicator** — it is not tappable (`clickable: false`), navigation happens by swiping only:
+
+- **Bar geometry** — 160 px wide (1/3 of the 480 px screen), transparent background, centered at the screen bottom (`align: bottom_mid`), 26 px tall (a 24 px focused glyph with ~1 px padding). Its top edge lands at y=294, exactly where the Now Playing control row ends; this 26 px overlay is smaller than the previous 30 px buttonmatrix and stays within the ~40 px bottom budget the Stations page scroll area accounts for.
+- **Slots (page order)** — Now Playing (`mdi-play-circle-outline`), Stations (`mdi-radio`), Settings (`mdi-cogs`).
+- **Focus** — the active page's glyph renders in `menu24` (24 px, accent color); inactive glyphs render in `nav20` (20 px, muted). Focus is tracked by the `current_page` global and applied by the `update_nav_indicator` script, wired into every page-change site (swipe handlers, `play_station`, `exit_ap_mode`, `wifi.on_connect`, `on_boot`, and the wake branch of `touchscreen.on_release`).
+- **Swipe math** — with three swipeable pages the shared handlers in [`packages/swipe_navigation.yaml`](packages/swipe_navigation.yaml) advance `current_page` modulo `${swipeable_page_count}` (left: `(cp+1) % 3`, right: `(cp+2) % 3`), matching `lvgl.page.next/previous` with `page_wrap: true` (`page_ap_setup` stays `skip: true`, so it never enters the sequence).
+- `enter_ap_mode` still hides the whole `top_layer` while the AP page is up; on exit the indicator is refocused on Now Playing.
 
 ### Bindings (widget → sensor/action)
 
@@ -287,18 +312,34 @@ Driven by [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-h
 | `mp_station_logo` | obj (panel) | — (hidden; station-picture source pending roadmap item 4) | — |
 | `mp_now_playing_art` | obj (panel) | `now_playing_art` sensor, `media_image_url` attribute | HA → UI (shown while metadata exists) |
 | `mp_visualizer` | obj (panel) | `media_player.on_play` / `on_pause` / `on_idle` — shown only while `player_playing` | native → UI |
-| `mp_bar_progress` | bar | `player_position` / `player_duration` (percent, clamped 0–100) | HA → UI |
-| `mp_lbl_elapsed` | label | `player_position` (`mm:ss`) | HA → UI |
-| `mp_lbl_total` | label | `player_duration` (`mm:ss`) | HA → UI |
+| `mp_bar_progress` | bar | `player_position` / `player_duration` (percent, clamped 0–100); hidden until a duration is known, re-hidden on `on_idle` | HA → UI |
+| `mp_lbl_elapsed` | label | `player_position` (`mm:ss`); hidden until a position is known (0 at track start is valid and shows), re-hidden on `on_idle` | HA → UI |
+| `mp_lbl_total` | label | `player_duration` (`mm:ss`); hidden until a duration is known, re-hidden on `on_idle` | HA → UI |
 | `mp_lbl_play_icon` | label | `player_state` (HA) + `media_player.on_play/on_pause/on_idle` — swaps `${text_pause}` / `${text_play}` glyph | HA/native → UI |
-| `volume_slider` | slider | `player_volume` sensor, `volume_level` (×100) | HA → UI |
+| `volume_slider` / `mp_lbl_volume` | slider / label | `media_player` `on_volume` trigger — the component is the single source of truth; slider + `%` text follow every volume change | native → UI |
 | `st_lbl_1..12` | label | `station_N_name` sensors / `offline_station_N_name` via `refresh_stations` | HA/offline → UI |
 | `st_btn_1..12` | button | runs `play_station` (plays `${current_station}`) | UI → playback |
+| `settings_lbl_wifi_icon` | label | `wifi_signal` (RSSI thresholds −50/−65/−78 → `wifi_100/75/50/25`) via `refresh_settings_info` | native → UI |
+| `settings_lbl_rssi` | label | `wifi_signal` ("−NN dBm"); hidden while disconnected | native → UI |
+| `settings_lbl_uptime` | label | `uptime_human` text sensor (`Xd Xh Xm`) via `refresh_settings_info` | native → UI |
+| `settings_lbl_startup_vol` | label | `startup_volume` global (captured in `on_boot` after `sync_volume_ui`) via `refresh_settings_info` | native → UI |
 | `mp_btn_play` | button | toggles play/pause via HA when connected (`player_playing` decides which); ignored offline | UI → HA |
 | `mp_btn_prev` | button | previous station (wrap `${station_count}` → 1) via `play_station` | UI → playback |
 | `mp_btn_next` | button | next station (wrap 1 → `${station_count}`) via `play_station` | UI → playback |
-| `mp_btn_mute` | button | `media_player.volume_mute` | UI → HA |
-| `volume_slider` | slider | `media_player.volume_set` (`x / 100.0`) on release | UI → HA |
+| `mp_btn_mute` | button | native mute action (toggle); `on_mute`/`on_unmute` do glyph color, `dac_mute` hardware mute, guarded HA push | UI → native |
+| `volume_slider` | slider | native set-volume action (`x / 100.0`) on release | UI → native |
+
+**Volume/mute model (event-driven):** the speaker media player component
+(`esp_media_player`, [`packages/esp-web-radio-audio.yaml`](packages/esp-web-radio-audio.yaml))
+is the single source of truth for volume and mute. Every control on this page is
+a pure native action (step up/down, set volume, mute toggle) with no UI or HA
+side-effects; all reactions — popup slider + percent label, mute glyph color,
+PCM5102 `dac_mute` hardware mute, and the guarded device→HA `is_volume_muted`
+push — run inside the component's `on_volume` / `on_mute` / `on_unmute`
+triggers, which fire identically for local commands and HA-originated changes.
+A boot-time `sync_volume_ui` script restores the persisted volume into the UI;
+the old HA volume/mute pull sensors were removed. See
+[`plans/refactor-media-player-hooks.md`](plans/refactor-media-player-hooks.md).
 
 ### Station selection & playback routing
 
@@ -345,19 +386,21 @@ Connectivity flags (both `bool` globals in [`packages/esp-web-radio-lvgl_ui.yaml
 
 Centralized in [`packages/display-fonts.yaml`](packages/display-fonts.yaml).
 
-- **Cyrillic + Latin coverage** — station names can contain Cyrillic (e.g. "Радио Дача"), so every font includes the Cyrillic alphabet alongside ASCII. `menu24`, `roboto42` use the `GF_Latin_Core` + `GF_Cyrillic_Core` glyphsets; `f_title`/`f_body`/`f_small` carry an explicit glyph string including `Ёё«»—–°`.
+- **Cyrillic + Latin coverage** — station names can contain Cyrillic (e.g. "Радио Дача"), so every text font includes the Cyrillic alphabet alongside ASCII (explicit glyph strings including `Ёё«»—–°`). The icon-only fonts `menu32` / `nav20` keep a minimal base set (space glyph only) to limit flash usage.
 - **Google Fonts** — fonts are loaded from `gfonts://Roboto` (no local font files needed for text).
-- **MDI webfont extras** — UI icons come from `fonts/materialdesignicons-webfont.ttf`, embedded via font `extras` (16 glyphs). Each icon is exposed as a `text_*` / `wifi_*` substitution so pages reference readable names instead of raw code points.
+- **MDI webfont extras** — UI icons come from `fonts/materialdesignicons-webfont.ttf`, embedded via font `extras` (18 glyphs in `menu24`, 7 in `menu32`, 3 in `nav20`). Each icon is exposed as a `text_*` / `wifi_*` substitution so pages reference readable names instead of raw code points.
 
 | Font id | Size | Used for |
 |---|---|---|
-| `menu24` | 24 px | Default icon/nav font — buttons, buttonmatrix, status icons, play/pause glyphs |
+| `menu24` | 24 px | Status icons + focused (active) nav glyphs; `${font_icon}` alias |
+| `nav20` | 20 px | Inactive bottom-nav glyphs (the three nav icons only) |
+| `menu32` | 32 px | Now Playing control-row icons (play/pause, skip, volume) |
 | `roboto42` | 42 px | Large text (reserved) |
 | `f_title` | 26 px | Page titles (`${font_title}`) |
 | `f_body` | 17 px | Body text, time labels, LVGL `default_font` (`${font_body}`) |
 | `f_small` | 13 px | Small/muted labels (`${font_small}`) |
 
-Icon substitutions defined: `text_hastatus` (mdi-home-assistant), `text_prev`, `text_next`, `text_home`, `wifi_25/50/75/100` (mdi-wifi-strength-1..4), `text_wifi` (mdi-wifi), `text_wifi_cog` (mdi-wifi-cog), `text_play`, `text_pause`, `text_skip_prev`, `text_skip_next`, `text_volume_high`, `text_volume_off`.
+Icon substitutions defined: `text_hastatus` (mdi-home-assistant), `text_nav_playing` (mdi-play-circle-outline), `text_nav_settings` (mdi-cogs), `text_nav_stations` (mdi-radio), `wifi_25/50/75/100` (mdi-wifi-strength-1..4), `text_wifi` (mdi-wifi), `text_wifi_cog` (mdi-wifi-cog), `text_play`, `text_pause`, `text_skip_prev`, `text_skip_next`, `text_volume_high`, `text_volume_plus`, `text_volume_minus`, `text_volume_off`.
 
 ---
 

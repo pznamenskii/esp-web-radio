@@ -1,85 +1,77 @@
 # ==============================================================================
 # page_now_playing.yaml - Now Playing page (port of lvgl_designer_NowPlaying.yaml)
 #
-# Geometry/layout follows the LVGL Designer export exactly; the Designer's font
-# block is dropped (fonts come from display-fonts.yaml), Designer fonts are
-# mapped to project fonts, FontAwesome glyphs are replaced with MDI icons, and
-# all inline hex colors are replaced with shared theme styles / substitutions
-# from packages/lvgl_theme.yaml.
+# Geometry follows the LVGL Designer export; fonts come from display-fonts.yaml,
+# colors/styles from packages/lvgl_theme.yaml (no raw hex on this page). Widget
+# -> sensor bindings and the hide/show rules live in
+# packages/esp-web-radio-homeassistant.yaml / esp-web-radio-audio.yaml.
 #
-# Bindings (see esp-web-radio-homeassistant.yaml):
-#   mp_station_title     <- now_playing          (media_title)
-#   mp_now_playing_artist<- now_playing_artist   (media_artist)
-#   mp_lnow_playing_track<- now_playing_track    (media_title)
-#   mp_bar_progress      <- player_position / player_duration
-#   mp_lbl_elapsed       <- player_position      (mm:ss)
-#   mp_lbl_total         <- player_duration      (mm:ss)
-#   mp_lbl_play_icon     <- player_state         (play/pause glyph)
-#   volume_slider        <- player_volume        (popup slider value, HA mode)
-#
-# STATIC LAYOUT CONTRACT (Fix 1):
-# Every widget on this page is ABSOLUTELY positioned inside `mp_card` with
-# explicit x / y / width / height; there are no flex/grid containers on this
-# page. Hiding a widget (empty title/artist/track, missing art, player stopped)
-# or shrinking its text therefore NEVER reflows siblings: hidden value-driven
-# labels keep their fixed slot reserved and nothing else moves.
+# STATIC LAYOUT CONTRACT (Fix 1): every widget on this page is ABSOLUTELY
+# positioned inside `mp_card` with explicit x/y/width/height; hiding a widget
+# never reflows siblings - hidden labels keep their fixed slot reserved.
 # ==============================================================================
 
 # ---------------------------------------------------------------------------
-# Device-side volume state (Fixes 2+3). The ESPHome media_player may not expose
-# a native mute action, so mute is implemented in software: remember the last
-# non-zero volume (`volume_before_mute`), apply volume 0 while muted, restore
-# on unmute. Volume is applied with the documented native
-# `media_player.volume_set` action, so it also works in wifi-only (no-HA) mode.
-#
-# NOTE 1 (hardware mute): the software mute is mirrored to the PCM5102 XSMT pin
-# via the `dac_mute` switch (GPIO7, active-low) inside the `volume_set` script,
-# so every mute/unmute path also drives the DAC hardware.
-#
-# NOTE 2 (full online mode): while `ha_connected`, `volume_set` additionally
-# pushes volume/mute to Home Assistant (media_player.volume_set / volume_mute).
-# The receive path is the `player_volume` / `player_muted` homeassistant sensors
-# in esp-web-radio-homeassistant.yaml - they are receive-only and adopt echoed
-# values into `volume_last_pushed` / `volume_mute_last_pushed`, which is what
-# prevents feedback loops.
+# Volume/mute controls are EVENT-DRIVEN (plans/refactor-media-player-hooks.md):
+# every command on this page is a pure native `media_player` action; all UI /
+# DAC / HA reactions run in the component's on_volume / on_mute / on_unmute
+# triggers (esp-web-radio-audio.yaml). `volume_level` / `volume_muted` are
+# read-only mirrors; `volume_mute_last_pushed` is the loop-protection guard for
+# the one retained HA mute push (device->HA). Full model: README.
 # ---------------------------------------------------------------------------
 globals:
+  # Read-only mirror of the component volume (0..1), updated by on_volume.
+  # No command reads it anymore; consumers are DBG logs and the future
+  # "startup volume" settings item (plan D3).
   - id: volume_level
     type: float
     restore_value: no
     initial_value: "0.5"
+  # Read-only mirror of the component mute state, updated by on_mute/on_unmute.
+  # Consumer: the mp_btn_mute toggle decision.
   - id: volume_muted
     type: bool
     restore_value: no
     initial_value: "false"
-  - id: volume_before_mute
-    type: float
-    restore_value: no
-    initial_value: "0.5"
-  # NOTE 2 loop protection: last values pushed to Home Assistant. Guards in
-  # `volume_set` only issue a service call when the current value differs from
-  # these; the HA->local mirrors adopt echoed values into them, so an echo can
-  # never re-trigger a push.
-  - id: volume_last_pushed
-    type: float
-    restore_value: no
-    initial_value: "0.5"
+  # Loop-protection guard for the ONE retained HA push (device->HA
+  # `is_volume_muted` in on_mute/on_unmute, esp-web-radio-audio.yaml): latched
+  # right after each push so an HA echo can never re-trigger it. Self-healing:
+  # the first mute/unmute after boot always pushes once (idempotent HA call).
   - id: volume_mute_last_pushed
     type: bool
     restore_value: no
     initial_value: "false"
 
 script:
-  # Apply the `volume_level` global to the native media player and mirror it
-  # into the popup slider + percent label. Also reconciles the mute icon color
-  # (orange accent while muted, gray accent otherwise) - single source of
-  # truth for the volume UI.
-  - id: volume_set
+  # Volume popup overlay: show it, then auto-hide after 5 s of inactivity.
+  # `mode: restart` means every re-trigger (each -/+ press or slider release)
+  # cancels the pending run and starts a fresh 5 s countdown - no native
+  # timer required. The popup is shown ONLY from local touch handlers; the
+  # media_player triggers never pop it (HA-originated changes must not open a
+  # popup, plan D5).
+  - id: show_volume_popup
     mode: restart
     then:
-      - media_player.volume_set:
-          id: esp_media_player
-          volume: !lambda 'return id(volume_level);'
+      - lvgl.widget.show: volume_popup
+      - delay: 5s
+      - lvgl.widget.hide: volume_popup
+
+  # Boot/restore (plan §Boot/restore, D6): read the volume the speaker
+  # component restored from flash and push it into the mirror + popup so the
+  # screen matches reality immediately. on_volume cannot be relied on at boot
+  # (restoring a persisted value is not a change, so the trigger never fires).
+  # Build-time check item: getter spelling `id(esp_media_player).volume` vs
+  # `.get_volume()` per installed ESPHome; fallback is to skip the read and
+  # accept the 50% display until the first volume event.
+  # Boot mute state (plan §Boot/restore + Edge cases): the component restores
+  # its volume but starts UNMUTED; `dac_mute` restore_mode ALWAYS_OFF keeps the
+  # DAC unmuted and the `volume_muted=false` mirror / gray glyph (YAML
+  # defaults) already agree - a reboot while muted comes back unmuted at the
+  # persisted volume, nothing extra needed. (On-device checklist: verify the
+  # booted screen shows the persisted volume + gray unmuted glyph.)
+  - id: sync_volume_ui
+    then:
+      - lambda: 'id(volume_level) = id(esp_media_player).volume;'
       - lvgl.slider.update:
           id: volume_slider
           value: !lambda 'return (int)(id(volume_level) * 100.0f);'
@@ -90,90 +82,6 @@ script:
             char buf[8];
             snprintf(buf, sizeof(buf), "%d%%", v);
             return buf;
-      - lambda: |-
-          if (id(volume_muted)) {
-            lv_obj_set_style_text_color(id(mp_lbl_mute_icon), lv_color_hex(${color_accent}), 0);
-          } else {
-            lv_obj_set_style_text_color(id(mp_lbl_mute_icon), lv_color_hex(${color_text_muted}), 0);
-          }
-      # NOTE 1 (hardware mute): mirror the software mute state onto the PCM5102
-      # XSMT pin through the `dac_mute` switch (GPIO7, inverted: ON -> LOW ->
-      # DAC hard-muted, OFF -> HIGH -> unmuted). Idempotent per state, so it is
-      # safe to run on every volume_set (including while already muted/unmuted).
-      # Boot state is consistent because both sides start unmuted:
-      # `volume_muted=false` and `dac_mute` restore_mode ALWAYS_OFF.
-      - if:
-          condition:
-            lambda: 'return id(volume_muted);'
-          then:
-            - switch.turn_on: dac_mute
-          else:
-            - switch.turn_off: dac_mute
-      # NOTE 2 (full online mode): push volume + mute to Home Assistant using
-      # the same `homeassistant.action` pattern as play/pause - only while the
-      # HA API client is connected (`ha_connected`); wifi-only keeps the purely
-      # local path above. Loop protection: push only when the value differs
-      # from the last-pushed value (the HA->local mirrors adopt echoed values
-      # into volume_last_pushed / volume_mute_last_pushed, so an echo can never
-      # re-enter this block).
-      - if:
-          condition:
-            lambda: 'return id(ha_connected);'
-          then:
-            - if:
-                condition:
-                  lambda: |-
-                    return (id(volume_level) > id(volume_last_pushed) + 0.0001f) ||
-                           (id(volume_level) < id(volume_last_pushed) - 0.0001f);
-                then:
-                  - homeassistant.action:
-                      action: media_player.volume_set
-                      data:
-                        entity_id: media_player.esp_media_player
-                        volume: !lambda |-
-                          char buf[16];
-                          snprintf(buf, sizeof(buf), "%g", id(volume_level));
-                          return buf;
-                  - lambda: 'id(volume_last_pushed) = id(volume_level);'
-            - if:
-                condition:
-                  lambda: 'return id(volume_muted) != id(volume_mute_last_pushed);'
-                then:
-                  - homeassistant.action:
-                      action: media_player.volume_mute
-                      data:
-                        entity_id: media_player.esp_media_player
-                        is_volume_muted: !lambda 'return id(volume_muted) ? "true" : "false";'
-                  - lambda: 'id(volume_mute_last_pushed) = id(volume_muted);'
-
-  # Mute toggle: while muted -> restore the remembered volume; otherwise save
-  # the current volume and apply 0. volume_set then pushes the result to the
-  # player and refreshes all volume UI.
-  - id: toggle_mute
-    then:
-      - if:
-          condition:
-            lambda: 'return id(volume_muted);'
-          then:
-            - lambda: 'id(volume_level) = id(volume_before_mute);'
-            - lambda: 'id(volume_muted) = false;'
-          else:
-            - lambda: |-
-                if (id(volume_level) > 0.0f) id(volume_before_mute) = id(volume_level);
-                id(volume_level) = 0.0f;
-                id(volume_muted) = true;
-      - script.execute: volume_set
-
-  # Volume popup overlay: show it, then auto-hide after 5 s of inactivity.
-  # `mode: restart` means every re-trigger (each -/+ press or slider release)
-  # cancels the pending run and starts a fresh 5 s countdown - no native
-  # timer required.
-  - id: show_volume_popup
-    mode: restart
-    then:
-      - lvgl.widget.show: volume_popup
-      - delay: 5s
-      - lvgl.widget.hide: volume_popup
 
 lvgl:
   pages:
@@ -239,7 +147,7 @@ lvgl:
                   y: 29
                   width: 344
                   height: 32
-                  text: "Радио Hour"
+                  text: "Выбери радиостанцию"
                   long_mode: SCROLL
               # Hidden when the artist value is empty (now_playing_artist
               # sensor). Fixed x/y/width/height keep the slot reserved so
@@ -270,6 +178,9 @@ lvgl:
                   text_font: ${font_small}
               - bar:
                   id: mp_bar_progress
+                  # Imp 7/8: hidden until a track duration is known (shown by the
+                  # player_position / player_duration on_value handlers).
+                  hidden: true
                   x: 19
                   y: 220
                   width: 441
@@ -286,6 +197,9 @@ lvgl:
                   bg_opa: 100%
               - label:
                   id: mp_lbl_elapsed
+                  # Imp 7/8: hidden until a media position exists (0 while the
+                  # track starts is valid and shows "0:00").
+                  hidden: true
                   styles: text_muted
                   x: 19
                   y: 231
@@ -297,6 +211,8 @@ lvgl:
                   text_font: ${font_body}
               - label:
                   id: mp_lbl_total
+                  # Imp 7/8: hidden until a media duration exists.
+                  hidden: true
                   styles: text_muted
                   x: 240
                   y: 231
@@ -309,10 +225,10 @@ lvgl:
               - obj:
                   id: mp_controls
                   styles: controls_row
-                  x: 90
+                  x: 10
                   y: 250
-                  width: 300
-                  height: 40
+                  width: 460
+                  height: 44
                   pad_all: 0
                   scrollbar_mode: "OFF"
                   widgets:
@@ -321,8 +237,8 @@ lvgl:
                         styles: icon_button
                         x: 0
                         y: 4
-                        width: 32
-                        height: 32
+                        width: 40
+                        height: 40
                         on_press:
                           # previous STATION (wrap 1 -> station_count); URL source
                           # is chosen by the play_station script (HA vs offline)
@@ -332,12 +248,12 @@ lvgl:
                           - label:
                               align: CENTER
                               text: ${text_skip_prev}
-                              text_font: ${font_icon}
+                              text_font: menu32
                               text_color: ${color_text_primary}
                     - button:
                         id: mp_btn_play
                         styles: primary_button
-                        x: 40
+                        x: 44
                         y: 0
                         width: 100
                         height: 40
@@ -392,15 +308,15 @@ lvgl:
                               id: mp_lbl_play_icon
                               align: CENTER
                               text: ${text_play}
-                              text_font: ${font_icon}
+                              text_font: menu32
                               text_color: ${color_text_primary}
                     - button:
                         id: mp_btn_next
                         styles: icon_button
                         x: 148
                         y: 4
-                        width: 32
-                        height: 32
+                        width: 40
+                        height: 40
                         on_press:
                           # next STATION (wrap station_count -> 1); URL source
                           # is chosen by the play_station script (HA vs offline)
@@ -410,71 +326,102 @@ lvgl:
                           - label:
                               align: CENTER
                               text: ${text_skip_next}
-                              text_font: ${font_icon}
+                              text_font: menu32
                               text_color: ${color_text_primary}
                     - button:
                         id: mp_btn_vol_down
                         styles: icon_button
-                        x: 188
+                        x: 342
                         y: 4
-                        width: 32
-                        height: 32
+                        width: 40
+                        height: 40
                         on_press:
-                          # Volume -5% via the native media_player.volume_set
-                          # path (volume_set script) - works in HA and wifi-only
-                          # mode. Pressing past 0 also clears the muted state.
-                          - lambda: |-
-                              float v = id(volume_level) - 0.05f;
-                              if (v < 0.0f) v = 0.0f;
-                              id(volume_level) = v;
-                              if (v > 0.0f) id(volume_muted) = false;
-                          - script.execute: volume_set
+                          # Native step -5% (volume_increment: 0.05). Pure
+                          # command - the on_volume trigger syncs slider +
+                          # percent label. Works in HA and wifi-only mode.
+                          # Unmute first, then step down (pressing past 0 also
+                          # clears the muted state).
+                          - if:
+                              condition:
+                                lambda: 'return id(volume_muted);'
+                              then:
+                                - media_player.volume_mute:
+                                    id: esp_media_player
+                                    state: OFF
+                          - media_player.volume_down:
+                              id: esp_media_player
                           - script.execute: show_volume_popup
                         widgets:
                           - label:
                               align: CENTER
                               text: ${text_volume_minus}
-                              text_font: ${font_icon}
+                              text_font: menu32
                               text_color: ${color_text_primary}
                     - button:
                         id: mp_btn_mute
                         styles: icon_button
-                        x: 224
+                        x: 386
                         y: 4
-                        width: 32
-                        height: 32
+                        width: 40
+                        height: 40
                         on_press:
-                          - script.execute: toggle_mute
+                          # Native mute toggle. Pure command - the on_mute /
+                          # on_unmute triggers (esp-web-radio-audio.yaml) handle
+                          # the glyph color, `dac_mute` hardware mute and the
+                          # guarded HA push. Deliberately does NOT open the
+                          # volume popup - muting is confirmed by the orange
+                          # glyph (behavior unchanged from before the refactor).
+                          # Build-time check item: `media_player.volume_mute`
+                          # uses `state: ON/OFF`; if the installed ESPHome
+                          # expects `muted: true/false` instead, adapt both this
+                          # handler and the volume_slider handler below.
+                          - if:
+                              condition:
+                                lambda: 'return id(volume_muted);'
+                              then:
+                                - media_player.volume_mute:
+                                    id: esp_media_player
+                                    state: OFF
+                              else:
+                                - media_player.volume_mute:
+                                    id: esp_media_player
+                                    state: ON
                         widgets:
                           - label:
                               id: mp_lbl_mute_icon
                               align: CENTER
                               text: ${text_volume_off}
-                              text_font: ${font_icon}
-                              # Gray accent while unmuted; the volume_set script
-                              # switches it to the orange accent while muted.
+                              text_font: menu32
+                              # Gray accent while unmuted; on_mute switches it to
+                              # the orange accent, on_unmute back to gray.
                               text_color: ${color_text_muted}
                     - button:
                         id: mp_btn_vol_up
                         styles: icon_button
-                        x: 260
+                        x: 430
                         y: 4
-                        width: 32
-                        height: 32
+                        width: 40
+                        height: 40
                         on_press:
-                          # Volume +5% (same native path as volume down).
-                          - lambda: |-
-                              float v = id(volume_level) + 0.05f;
-                              if (v > 1.0f) v = 1.0f;
-                              id(volume_level) = v;
-                              id(volume_muted) = false;
-                          - script.execute: volume_set
+                          # Native step +5% (volume_increment: 0.05). Pure
+                          # command - the on_volume trigger syncs slider +
+                          # percent label. If currently muted, unmute first,
+                          # then step up.
+                          - if:
+                              condition:
+                                lambda: 'return id(volume_muted);'
+                              then:
+                                - media_player.volume_mute:
+                                    id: esp_media_player
+                                    state: OFF
+                          - media_player.volume_up:
+                              id: esp_media_player
                           - script.execute: show_volume_popup
                         widgets:
                           - label:
                               align: CENTER
                               text: ${text_volume_plus}
-                              text_font: ${font_icon}
+                              text_font: menu32
                               text_color: ${color_text_primary}
               # Volume popup overlay (Fix 3): horizontal slider near the bottom,
               # drawn LAST inside mp_card so it renders on top of page content.
@@ -485,9 +432,9 @@ lvgl:
                   id: volume_popup
                   styles: panel
                   x: 50
-                  y: 244
+                  y: 150
                   width: 380
-                  height: 44
+                  height: 50
                   pad_all: 0
                   scrollbar_mode: "OFF"
                   clickable: true
@@ -498,18 +445,26 @@ lvgl:
                         x: 16
                         y: 12
                         width: 276
-                        height: 20
+                        height: 24
                         min_value: 0
                         max_value: 100
                         value: 50
                         adv_hittest: true
                         on_release:
-                          # Apply the dragged value (0..100 -> 0..1); dragging
-                          # above 0 also unmutes. Restarts the 5 s auto-hide.
-                          - lambda: |-
-                              id(volume_level) = x / 100.0f;
-                              if (id(volume_level) > 0.0f) id(volume_muted) = false;
-                          - script.execute: volume_set
+                          # Apply the dragged value (0..100 -> 0..1) via the
+                          # native set_volume action - the on_volume trigger
+                          # syncs slider + percent label. Dragging above 0 also
+                          # unmutes. Restarts the 5 s auto-hide.
+                          - if:
+                              condition:
+                                lambda: 'return x > 0 && id(volume_muted);'
+                              then:
+                                - media_player.volume_mute:
+                                    id: esp_media_player
+                                    state: OFF
+                          - media_player.volume_set:
+                              id: esp_media_player
+                              volume: !lambda 'return x / 100.0f;'
                           - script.execute: show_volume_popup
                     - label:
                         id: mp_lbl_volume
