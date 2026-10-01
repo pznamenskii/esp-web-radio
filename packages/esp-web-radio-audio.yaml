@@ -122,7 +122,16 @@ media_player:
     on_play:
       - logger.log: "media player playing"
       - lambda: 'id(player_playing) = true;'
-      - lvgl.widget.show: mp_visualizer
+      # Visualizer toggle (Info/Settings page): `visualizer_enabled` (persisted
+      # global, settings page) gates the strip - show it only while enabled.
+      # Re-enabling while playing re-shows the strip via the toggle row's own
+      # handler; pause/idle hiding below stays unconditional (unchanged). The
+      # FFT/speaker tap keeps running regardless - only the LVGL strip is gated.
+      - if:
+          condition:
+            lambda: 'return id(visualizer_enabled);'
+          then:
+            - lvgl.widget.show: mp_visualizer
       - lvgl.label.update:
           id: mp_lbl_play_icon
           text: ${text_pause}

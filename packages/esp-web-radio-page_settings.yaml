@@ -9,10 +9,26 @@
 #     itself, so it works in wifi_only/no-HA mode too (no HA entity needed).
 #   - Uptime: `uptime` + `uptime_human` (days/hours/minutes), re-added in
 #     esp-web-radio-homeassistant.yaml.
-#   - Startup volume: `startup_volume` global, captured in `on_boot` right
-#     after `sync_volume_ui` reads the component-restored volume
-#     (esp-web-radio.yaml); component restore happens during setup (before
-#     on_boot), so the read is already the persisted boot value.
+#   - Startup volume (INTERACTIVE): a PERSISTED `startup_volume` global
+#     (restore_value: true), shown as a percentage. Tapping the row opens the
+#     page-local `settings_vol_popup` (horizontal slider + percent label, same
+#     pattern as the Now Playing volume popup - mode: restart script, 5 s
+#     auto-hide). On release the value is stored in the global, pushed to the
+#     player immediately via the native media_player.volume_set action (audible
+#     feedback; the existing on_volume trigger keeps the Now Playing popup
+#     slider/percent in sync) and the row label is refreshed. At boot the
+#     CONFIGURED startup_volume overrides the component-restored live volume -
+#     deliberate deviation from pure component-volume-restore, applied guarded
+#     in on_boot (esp-web-radio.yaml).
+#   - Visualizer toggle (INTERACTIVE): an LVGL `switch` row bound to the
+#     persisted `visualizer_enabled` global (default true). It gates the Now
+#     Playing visualizer strip: on_play shows mp_visualizer only while enabled
+#     (esp-web-radio-audio.yaml) and the viz_animation interval does no work
+#     while disabled (page_now_playing.yaml). Re-enabling while playing
+#     re-shows the strip; pause/idle hiding is unchanged. The FFT/speaker tap
+#     keeps running regardless (cheap) - only the strip + animation are gated,
+#     the spectrum_tap component is untouched. UI-only setting (no HA mirror -
+#     documented decision).
 #   - Last reset reason: `debug.reset_reason` text sensor (esp-web-radio.yaml,
 #     plans/troubleshooting-restarts.md) - power-on / software / watchdog /
 #     brownout etc. The reason SURVIVES software reboots (hardware/RTC
@@ -20,26 +36,45 @@
 #     previous session. Row is hidden while the sensor is unknown (hide-only,
 #     no reflow).
 #   - Idle/inactivity behavior (no settings row - it is behavior, not data):
-#     the volume popup already auto-dismisses after 5 s of inactivity
-#     (`show_volume_popup`, mode: restart, page_now_playing.yaml), and waking
-#     the device from global idle (LVGL `on_idle` sleep) returns to Now Playing
-#     - implemented in the native `touchscreen.on_release` wake handler in
-#     esp-web-radio-hardware.yaml (no extra timer scripts, per project review).
+#     the volume popups already auto-dismiss after 5 s of inactivity
+#     (`show_volume_popup` / `show_settings_vol_popup`, mode: restart), and
+#     waking the device from global idle (LVGL `on_idle` sleep) returns to Now
+#     Playing - implemented in the native `touchscreen.on_release` wake handler
+#     in esp-web-radio-hardware.yaml (no extra timer scripts, per project
+#     review).
 #
-# Geometry: 4 fixed info rows (48 px tall, 56 px pitch) ending at y=270, still
-# above the bottom nav bar (top edge y=294). Static-layout contract: hide/show
-# only, fixed positions - no reflow.
+# Geometry: 5 fixed info rows (48 px tall, 56 px pitch - the original
+# comfortable spacing) starting at y=54; the fifth row ends at y=326, below
+# the visible area, so the page is vertically SCROLLABLE (scrollbar_mode AUTO,
+# same pattern as the Stations page - content pans under the transparent
+# bottom nav overlay). Static-layout contract: hide/show only, absolute fixed
+# positions - no reflow; scrolling never re-lays out siblings. The startup-
+# volume popup is page content too (fixed 380x50 slot at y=222, drawn last so
+# it renders on top of the rows) and pans with the page like any child.
 # ==============================================================================
 
 globals:
-  # Volume restored at boot, captured in `on_boot` right after `sync_volume_ui`
-  # reads `id(esp_media_player).volume`. Component restore runs during setup
-  # (before on_boot), so the capture is the true boot volume; if that ever
-  # moves after boot, re-read lazily when this page is first shown instead.
+  # Volume applied at boot, PERSISTED and user-editable via the settings popup
+  # (tap the startup-volume row). This replaces the old boot-capture-only
+  # global (restore_value was no; the value was copied from the component-
+  # restored volume in on_boot). Now the row shows THIS configured value and
+  # on_boot applies it to the player, overriding the component restore -
+  # see esp-web-radio.yaml on_boot for the guarded volume_set + comments.
   - id: startup_volume
     type: float
-    restore_value: no
+    restore_value: true
     initial_value: "0.5"
+  # Visualizer on/off (Info/Settings page toggle row). PERSISTED; gates the
+  # Now Playing visualizer strip: on_play shows mp_visualizer only while true
+  # (esp-web-radio-audio.yaml) and the viz_animation interval skips its work
+  # while false (page_now_playing.yaml). Referenced from the audio package and
+  # the Now Playing page; owned here because this page is the setting's UI.
+  # UI-only: no HA switch mirror (the project has no template-switch pattern;
+  # two-way sync would risk echo loops - documented in the completion doc).
+  - id: visualizer_enabled
+    type: bool
+    restore_value: true
+    initial_value: "true"
 
 script:
   # ---------------------------------------------------------------------------
@@ -47,8 +82,8 @@ script:
   # last reset reason). Called from: on_boot (seeds the page before it can be
   # shown), wifi_signal / uptime_human on_value
   # (esp-web-radio-homeassistant.yaml), reset_reason on_value
-  # (esp-web-radio.yaml) and wifi.on_connect / on_disconnect
-  # (esp-web-radio-lvgl_ui.yaml).
+  # (esp-web-radio.yaml), wifi.on_connect / on_disconnect
+  # (esp-web-radio-lvgl_ui.yaml) and the startup-volume popup on_release.
   # RSSI -> icon thresholds: >= -50 dBm = wifi_100, >= -65 = wifi_75,
   # >= -78 = wifi_50, else wifi_25. WiFi down: lowest bar, muted, dBm hidden.
   # ---------------------------------------------------------------------------
@@ -63,7 +98,7 @@ script:
             return buf;
       - lvgl.label.update:
           id: settings_lbl_uptime
-          text: !lambda |-
+          text: !lambda |- 
             if (id(uptime_human).has_state()) return id(uptime_human).state.c_str();
             return "—";
       - if:
@@ -106,11 +141,39 @@ script:
           else:
             - lvgl.widget.hide: settings_row_reset
 
+  # ---------------------------------------------------------------------------
+  # Startup-volume popup (page-local, mirrors the Now Playing volume popup
+  # pattern): seed slider + percent label from the `startup_volume` global,
+  # show the overlay, auto-hide after 5 s of inactivity. `mode: restart`
+  # means every re-trigger (row tap or slider release) cancels the pending run
+  # and starts a fresh 5 s countdown - no native timer required. Drawn LAST in
+  # the page so it renders on top of the rows; fixed geometry, never reflows.
+  # ---------------------------------------------------------------------------
+  - id: show_settings_vol_popup
+    mode: restart
+    then:
+      - lvgl.slider.update:
+          id: settings_vol_slider
+          value: !lambda 'return (int)(id(startup_volume) * 100.0f);'
+      - lvgl.label.update:
+          id: settings_lbl_vol_value
+          text: !lambda |-
+            int v = (int)(id(startup_volume) * 100.0f);
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%d%%", v);
+            return buf;
+      - lvgl.widget.show: settings_vol_popup
+      - delay: 5s
+      - lvgl.widget.hide: settings_vol_popup
+
 lvgl:
   pages:
     - id: page_settings
       pad_all: 0
-      scrollbar_mode: "OFF"
+      # Vertical scrollbar (AUTO) once the 5 rows exceed the 320 px viewport -
+      # the same scrollable-page pattern as page_stations. The bottom nav bar
+      # is a top_layer overlay, so scrolled content pans under it.
+      scrollbar_mode: "AUTO"
       # Swipe navigation: shared handlers from swipe_navigation.yaml - the page
       # is the third swipeable page; the modulo math there keeps current_page
       # in sync (2 = Settings) so update_nav_indicator focuses the cogs slot.
@@ -202,8 +265,12 @@ lvgl:
                   height: 48
                   text: "—"
                   text_align: RIGHT
-        # ── Row 3: startup volume (captured at boot) ──
-        - obj:
+        # ── Row 3: startup volume (INTERACTIVE) ──
+        # A button (Stations-page pattern: station_button style + on_press) so
+        # the row visibly reacts to touch; tapping opens the settings_vol_popup
+        # slider. The row label always shows the CONFIGURED `startup_volume`
+        # (persisted global) - not a boot capture.
+        - button:
             id: settings_row_startup_vol
             styles: station_button
             x: 16
@@ -211,7 +278,8 @@ lvgl:
             width: 448
             height: 48
             pad_all: 0
-            scrollbar_mode: "OFF"
+            on_press:
+              - script.execute: show_settings_vol_popup
             widgets:
               - label:
                   id: settings_lbl_startup_vol_icon
@@ -240,13 +308,68 @@ lvgl:
                   height: 48
                   text: "50%"
                   text_align: RIGHT
-        # ── Row 4: last reset reason (debug.reset_reason; hidden while unknown) ──
+        # ── Row 4: visualizer on/off (LVGL switch bound to visualizer_enabled) ──
+        # The switch is the ONLY interactive element of this row (the row itself
+        # is a plain container, unlike the startup-volume button). on_value
+        # persists the state into the global and re-gates the Now Playing strip
+        # if playback is already active (re-enabled while playing -> strip shows
+        # again; disabled while playing -> strip hides). Pause/idle hiding stays
+        # unconditional in the media player triggers.
+        - obj:
+            id: settings_row_visualizer
+            styles: station_button
+            x: 16
+            y: 222
+            width: 448
+            height: 48
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: settings_lbl_visualizer_icon
+                  x: 14
+                  y: 8
+                  width: 32
+                  height: 32
+                  text: "${text_equalizer}"
+                  text_font: menu24
+                  text_color: ${color_accent}
+              - label:
+                  id: settings_lbl_visualizer_caption
+                  styles: text_body
+                  x: 54
+                  y: 0
+                  width: 220
+                  height: 48
+                  text: "Визуализатор"
+                  text_align: LEFT
+              - switch:
+                  id: settings_sw_visualizer
+                  x: 390
+                  y: 9
+                  width: 48
+                  height: 30
+                  value: true
+                  on_value:
+                    - lambda: 'id(visualizer_enabled) = x;'
+                    - if:
+                        condition:
+                          lambda: 'return id(player_playing);'
+                        then:
+                          - if:
+                              condition:
+                                lambda: 'return id(visualizer_enabled);'
+                              then:
+                                - lvgl.widget.show: mp_visualizer
+                              else:
+                                - lvgl.widget.hide: mp_visualizer
+        # ── Row 5: last reset reason (debug.reset_reason; hidden while unknown) ──
         - obj:
             id: settings_row_reset
             styles: station_button
             hidden: true
             x: 16
-            y: 222
+            y: 278
             width: 448
             height: 48
             pad_all: 0
@@ -279,3 +402,67 @@ lvgl:
                   height: 48
                   text: "—"
                   text_align: RIGHT
+        # ── Startup-volume popup overlay ──
+        # Same pattern as the Now Playing volume popup (page-level, drawn LAST
+        # so it renders on top of the rows): horizontal slider + percent label,
+        # absolutely positioned (static-layout contract), hidden by default,
+        # shown by show_settings_vol_popup for 5 s after each row tap / slider
+        # release. Fixed 380x50 slot at y=222..272, over the visualizer row.
+        # It is page content, so it pans with the page when the user scrolls -
+        # and always reappears over the same rows (the row that opens it sits
+        # directly above, so the popup lands right under the tapped row).
+        - obj:
+            id: settings_vol_popup
+            styles: panel
+            x: 50
+            y: 222
+            width: 380
+            height: 50
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            clickable: true
+            hidden: true
+            widgets:
+              - slider:
+                  id: settings_vol_slider
+                  x: 16
+                  y: 12
+                  width: 276
+                  height: 24
+                  min_value: 0
+                  max_value: 100
+                  value: 50
+                  adv_hittest: true
+                  on_release:
+                    # Store the dragged value (0..100 -> 0..1) in the persisted
+                    # `startup_volume` global, then push it to the player right
+                    # away via the native set_volume action so the user hears
+                    # the result (the existing on_volume trigger keeps the Now
+                    # Playing popup slider + percent label in sync - no manual
+                    # mirroring needed). Dragging above 0 also unmutes, like the
+                    # Now Playing slider. Refresh the row label + restart the
+                    # 5 s auto-hide.
+                    - lambda: 'id(startup_volume) = x / 100.0f;'
+                    - if:
+                        condition:
+                          lambda: 'return x > 0 && id(volume_muted);'
+                        then:
+                          - media_player.volume_mute:
+                              id: esp_media_player
+                              state: OFF
+                    - media_player.volume_set:
+                        id: esp_media_player
+                        volume: !lambda 'return id(startup_volume);'
+                    - script.execute: refresh_settings_info
+                    - script.execute: show_settings_vol_popup
+              - label:
+                  id: settings_lbl_vol_value
+                  x: 302
+                  y: 13
+                  width: 62
+                  height: 18
+                  text: "50%"
+                  text_align: RIGHT
+                  long_mode: CLIP
+                  text_font: ${font_body}
+                  text_color: ${color_text_primary}

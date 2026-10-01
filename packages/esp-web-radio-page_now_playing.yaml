@@ -704,13 +704,15 @@ lvgl:
 # attack/decay smoothing - fast rise, slow fall, same tuning as the plan
 # (GAIN 300.0f, attack 0.5, decay 0.85).
 #
-# Integration with the existing show/hide triggers: the guard is simply the
-# widget visibility itself - on_play shows mp_visualizer, on_pause/on_idle
-# hide it (esp-web-radio-audio.yaml), so while the strip is hidden this
-# interval does no work (one lv_obj_has_flag check per tick). The FFT itself
-# only runs while play() flows, i.e. while audio is actually playing - when
-# paused/idle no new bands are produced and no bar updates happen. LVGL is
-# skipped while the idle snow screen is up (lvgl.is_paused).
+# Integration with the existing show/hide triggers: the guards are the
+# `visualizer_enabled` toggle (Info/Settings page persisted global) AND the
+# widget visibility itself - on_play shows mp_visualizer only while enabled,
+# on_pause/on_idle hide it unconditionally (esp-web-radio-audio.yaml), so
+# while disabled or hidden this interval does no work (one flag check per
+# tick). The FFT itself only runs while play() flows, i.e. while audio is
+# actually playing - when paused/idle no new bands are produced and no bar
+# updates happen. LVGL is skipped while the idle snow screen is up
+# (lvgl.is_paused).
 # ---------------------------------------------------------------------------
 interval:
   - id: viz_animation
@@ -719,7 +721,7 @@ interval:
       - if:
           condition:
             and:
-              - lambda: 'return !lv_obj_has_flag(id(mp_visualizer), LV_OBJ_FLAG_HIDDEN);'
+              - lambda: 'return id(visualizer_enabled) && !lv_obj_has_flag(id(mp_visualizer), LV_OBJ_FLAG_HIDDEN);'
               - not:
                   - lvgl.is_paused
           then:

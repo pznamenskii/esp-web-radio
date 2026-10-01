@@ -30,7 +30,7 @@ ESP32-S3 WiFi internet radio with a 480×320 LVGL touchscreen UI, I2S output to 
   - Progress bar plus elapsed (`mm:ss`) and total (`mm:ss`) time labels — the whole cluster hides while its data is absent (elapsed needs a media position; total and the bar need a media duration; `on_idle` re-hides everything when the player stops)
   - Transport controls: station prev/next, play/pause, mute (-/+ with a popup slider)
 - **Stations page** — a second LVGL page listing every available station as a button: a dynamic 2×6 grid (up to 12 slots) filled from the HA station-name sensors while the API is connected, or from the hardcoded offline list when it is not. Empty slots hide automatically; a vertical scrollbar appears once more than 8 stations are active; pressing a station plays it and returns to Now Playing.
-- **Info/Settings page** — the third swipeable LVGL page with device info: **WiFi signal level** (signal-strength icon `wifi_25/50/75/100` picked by RSSI thresholds −50/−65/−78 dBm plus a numeric dBm label; driven by the local `wifi_signal` sensor, which measures the ESP32 radio itself — so it also works in wifi-only/no-HA mode), **uptime** (`uptime` + `uptime_human`, formatted days/hours/minutes), **startup volume** (the `startup_volume` global captured in `on_boot` right after `sync_volume_ui` restores the persisted volume, shown as a percentage), and **last reset reason** (the `debug.reset_reason` text sensor — power-on/software/watchdog/brownout etc.; the reason survives software reboots, so it names what ended the previous session; the row shows only while the sensor has a state). All icons come from `menu24` (cogs, wifi-strength, volume-high) plus one new 24 px glyph `mdi-restart` for the reset-reason row — negligible flash cost.
+- **Info/Settings page** — the third swipeable LVGL page with device info + settings: **WiFi signal level** (signal-strength icon `wifi_25/50/75/100` picked by RSSI thresholds −50/−65/−78 dBm plus a numeric dBm label; driven by the local `wifi_signal` sensor, which measures the ESP32 radio itself — so it also works in wifi-only/no-HA mode), **uptime** (`uptime` + `uptime_human`, formatted days/hours/minutes), **editable startup volume** (a persisted `startup_volume` global shown as a percentage; tapping the row opens a popup slider that stores the value, applies it to the player immediately for audible feedback, and is re-applied at boot as the boot volume — overriding the component-restored live volume), **visualizer toggle** (an LVGL switch bound to the persisted `visualizer_enabled` global that gates the Now Playing spectrum strip: while off the strip never shows even during playback and the animation driver does no work — the FFT/speaker tap keeps running, only the strip + animation are gated), and **last reset reason** (the `debug.reset_reason` text sensor — power-on/software/watchdog/brownout etc.; the reason survives software reboots, so it names what ended the previous session; the row shows only while the sensor has a state). The page scrolls vertically once the 5 rows exceed the viewport (Stations-page scrollbar pattern). Row icons come from `menu24` (cogs, wifi-strength, volume-high, restart) plus one new 24 px glyph `mdi-equalizer` for the visualizer row — negligible flash cost.
 - **No-HA local stations** — with WiFi up but the Home Assistant API unreachable, the Stations page falls back to the built-in list in [`packages/esp-web-radio-offline_stations.yaml`](packages/esp-web-radio-offline_stations.yaml) and playback goes straight to the direct stream URL via the local media player. When HA reconnects, station names and playback routing switch back to Home Assistant automatically.
 - **Home Assistant integration** — encrypted native API; the player, DAC mute switch, and media info are exposed automatically. A status indicator in the top layer (`lbl_hastatus`, `mdi-home-assistant` glyph) appears when a Home Assistant client connects and disappears on disconnect.
 - **Clock with local fallback** — the title-bar clock (`lbl_time`) shows HA-provided time while the API is connected; when WiFi is up but HA is not, it falls back to an NTP-maintained local clock (`sntp`, `pool.ntp.org` / `time.google.com`); with no WiFi the clock hides. See [Time sync & device modes](#time-sync--device-modes).
@@ -172,8 +172,9 @@ esp-web-radio/
 │   │                                      #   fallback AP + captive portal are active —
 │   │                                      #   SSID, password, setup URL; locked page
 │   ├── esp-web-radio-page_settings.yaml   # Info/Settings page: WiFi signal + dBm,
-│   │                                      #   uptime, startup volume; idle/wake
-│   │                                      #   behavior (third swipeable page)
+│   │                                      #   uptime, editable startup volume
+│   │                                      #   (popup slider), visualizer toggle;
+│   │                                      #   scrollable; idle/wake behavior
 │   ├── lvgl_theme.yaml                    # Central dark-orange palette, lvgl.theme defaults,
 │   │                                      #   shared style_definitions
 │   ├── display-fonts.yaml                 # Font strategy: Roboto gfonts, Cyrillic coverage,
@@ -283,15 +284,16 @@ Three swipeable pages (480×320 landscape, LVGL `rotation: 90`), declared under 
 
 #### Info/Settings page (`page_settings`)
 
-[`packages/esp-web-radio-page_settings.yaml`](packages/esp-web-radio-page_settings.yaml) defines `page_settings`, the third swipeable page (reached by a left swipe from Stations; wraps to Now Playing). Fixed 4-row info layout ending at y=270 (still above the bottom nav bar at y=294); static-layout contract (hide/show only):
+[`packages/esp-web-radio-page_settings.yaml`](packages/esp-web-radio-page_settings.yaml) defines `page_settings`, the third swipeable page (reached by a left swipe from Stations; wraps to Now Playing). Fixed 5-row layout (48 px rows at the original 56 px pitch, ending at y=326) — the page is vertically scrollable (`scrollbar_mode: AUTO`, Stations-page pattern) once the rows exceed the 320 px viewport, so content pans under the transparent bottom nav overlay; static-layout contract (hide/show only, absolute positions, no reflow):
 
 - **WiFi signal** — a `wifi_signal` sensor (ESPHome `platform: wifi_signal`, re-added to [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-homeassistant.yaml)) feeds the `refresh_settings_info` script, which picks the signal-strength glyph by threshold (`wifi_100` ≥ −50 dBm, `wifi_75` ≥ −65 dBm, `wifi_50` ≥ −78 dBm, else `wifi_25`) and shows the numeric dBm label. Because the sensor measures the ESP32's own radio, the row works identically in HA-connected and wifi-only modes; while disconnected the icon dims to the lowest bar and the dBm label hides.
 - **Uptime** — the `uptime` sensor (re-added) drives the `uptime_human` template text sensor (re-added), formatted `Xd Xh Xm` / `Xh Xm` / `Xm`; the label updates every 60 s via `refresh_settings_info`.
-- **Startup volume** — the `startup_volume` global is captured in `on_boot` (in [`esp-web-radio.yaml`](esp-web-radio.yaml)) immediately after `sync_volume_ui` reads the component-restored volume (component restore happens during setup, before `on_boot`); the row displays it as a percentage.
+- **Startup volume (editable)** — a persisted `startup_volume` float global (`restore_value: true`, default 50 %) displayed as a percentage. Tapping the row (a `button` with the stations `station_button` style, so it visibly reacts to touch) opens a page-local popup (`settings_vol_popup`: horizontal slider + percent label, drawn last over the rows) that mirrors the Now Playing volume popup pattern — `show_settings_vol_popup` script with `mode: restart` and a 5 s auto-hide. On release the value is stored in the global, pushed to the player right away via the native `media_player.volume_set` action (audible feedback; the existing `on_volume` trigger keeps the Now Playing popup slider/percent label in sync) and the row label is refreshed via `refresh_settings_info`. At boot ([`esp-web-radio.yaml`](esp-web-radio.yaml)), after `sync_volume_ui`, the CONFIGURED `startup_volume` is re-applied with a guarded `volume_set` — deliberately overriding the component-restored live volume so the user-configured boot level wins (deviation from pure component-volume-restore, documented in code comments).
+- **Visualizer toggle** — an LVGL `switch` (`settings_sw_visualizer`) bound to the persisted `visualizer_enabled` bool global (default ON). It gates the Now Playing spectrum strip: `on_play` shows `mp_visualizer` only while enabled, and the `viz_animation` interval skips all work while disabled (both the strip visibility AND the bar-math updates — one flag check per tick). Re-enabling while playing re-shows the strip; pause/idle hiding stays unconditional. The FFT/speaker tap (`spectrum_tap`) keeps running regardless — only the LVGL strip + animation are gated. UI-only setting: no HA switch mirror (the project has no template-switch pattern; two-way sync would risk echo loops).
 - **Last reset reason** — the `reset_reason` text sensor of the `debug` component ([`esp-web-radio.yaml`](esp-web-radio.yaml)) feeds the row via `refresh_settings_info`; the reason is reported by hardware/RTC and **survives software reboots**, so after a spontaneous restart this row names what ended the previous session (power-on, software, watchdog, brown-out…). The whole row starts hidden and appears only while the sensor has a state (hide-only, no reflow). Diagnosing restarts: [`plans/troubleshooting-restarts.md`](plans/troubleshooting-restarts.md).
 - **Idle/inactivity behavior** (no settings row — behavior, not data): the volume popup auto-dismisses after 5 s of inactivity (`show_volume_popup`, `mode: restart`) and waking the device from global idle (LVGL `on_idle` sleep) returns to Now Playing — implemented inside the native `touchscreen.on_release` wake handler ([`packages/esp-web-radio-hardware.yaml`](packages/esp-web-radio-hardware.yaml)) that performs `lvgl.resume`, without extra timer scripts.
 
-The page title uses the cogs glyph (`text_nav_settings`) and all icons come from glyphs already embedded in `menu24` — no new font entries, no flash cost.
+The page title uses the cogs glyph (`text_nav_settings`); row icons come from `menu24` (wifi-strength-1..4, volume-high, restart) plus one new 24 px glyph `mdi-equalizer` (`text_equalizer`) for the visualizer toggle row — negligible flash cost.
 
 #### AP setup page (`page_ap_setup`)
 
@@ -327,9 +329,10 @@ media_player → resampler → mixer → spectrum_tap → i2s_speaker → I2S �
   smoothing (fast rise — 50/50 blend, slow fall — ×0.85, GAIN 300 — the plan's
   exact tuning). It runs only while `mp_visualizer` is visible (= playing, per
   the `on_play`/`on_pause`/`on_idle` triggers in
-  [`packages/esp-web-radio-audio.yaml`](packages/esp-web-radio-audio.yaml)) and
-  LVGL is not paused; the FFT itself runs only while PCM flows through the tap,
-  so idle/paused costs nothing.
+  [`packages/esp-web-radio-audio.yaml`](packages/esp-web-radio-audio.yaml)),
+  the `visualizer_enabled` toggle (Info/Settings page) is ON, and LVGL is not
+  paused; the FFT itself runs only while PCM flows through the tap, so
+  idle/paused costs nothing.
 - **Both pipelines** (media + announcements) are mixed before the tap point, so
   TTS interruptions animate the visualizer too.
 - **Custom component internals, build-time checks and estimated memory/CPU
@@ -367,7 +370,9 @@ Driven by [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-h
 | `settings_lbl_wifi_icon` | label | `wifi_signal` (RSSI thresholds −50/−65/−78 → `wifi_100/75/50/25`) via `refresh_settings_info` | native → UI |
 | `settings_lbl_rssi` | label | `wifi_signal` ("−NN dBm"); hidden while disconnected | native → UI |
 | `settings_lbl_uptime` | label | `uptime_human` text sensor (`Xd Xh Xm`) via `refresh_settings_info` | native → UI |
-| `settings_lbl_startup_vol` | label | `startup_volume` global (captured in `on_boot` after `sync_volume_ui`) via `refresh_settings_info` | native → UI |
+| `settings_lbl_startup_vol` | label | `startup_volume` persisted global (configured boot volume, editable via the settings popup) via `refresh_settings_info` | native → UI |
+| `settings_sw_visualizer` | switch | `visualizer_enabled` persisted global — gates `mp_visualizer` show on `on_play` + all `viz_animation` work | UI → global/now-playing |
+| `settings_vol_slider` / `settings_lbl_vol_value` | slider / label | `startup_volume` global — on release: store + native `volume_set` (audible feedback; `on_volume` keeps the Now Playing popup in sync) | UI → native/global |
 | `settings_lbl_reset_reason` | label | `reset_reason` debug text sensor (last reset reason) via `refresh_settings_info`; row `settings_row_reset` shown only while the sensor has a state | native → UI |
 | `mp_btn_play` | button | toggles play/pause via HA when connected (`player_playing` decides which); ignored offline | UI → HA |
 | `mp_btn_prev` | button | previous station (wrap `${station_count}` → 1) via `play_station` | UI → playback |
@@ -384,7 +389,10 @@ PCM5102 `dac_mute` hardware mute, and the guarded device→HA `is_volume_muted`
 push — run inside the component's `on_volume` / `on_mute` / `on_unmute`
 triggers, which fire identically for local commands and HA-originated changes.
 A boot-time `sync_volume_ui` script restores the persisted volume into the UI;
-the old HA volume/mute pull sensors were removed. See
+right after it, `on_boot` re-applies the configured `startup_volume` (the
+Info/Settings editable boot-volume setting) with a guarded `volume_set`,
+overriding the component restore by design. The old HA volume/mute pull
+sensors were removed. See
 [`plans/refactor-media-player-hooks.md`](plans/refactor-media-player-hooks.md).
 
 ### Station selection & playback routing
@@ -464,7 +472,7 @@ Centralized in [`packages/display-fonts.yaml`](packages/display-fonts.yaml).
 
 - **Cyrillic + Latin coverage** — station names can contain Cyrillic (e.g. "Радио Дача"), so every text font includes the Cyrillic alphabet alongside ASCII (explicit glyph strings including `Ёё«»—–°`). The icon-only fonts `menu32` / `nav20` keep a minimal base set (space glyph only) to limit flash usage.
 - **Google Fonts** — fonts are loaded from `gfonts://Roboto` (no local font files needed for text).
-- **MDI webfont extras** — UI icons come from `fonts/materialdesignicons-webfont.ttf`, embedded via font `extras` (12 glyphs in `menu24` incl. the new `mdi-restart`, 7 in `menu32`, 3 in `nav20`). Each icon is exposed as a `text_*` / `wifi_*` substitution so pages reference readable names instead of raw code points.
+- **MDI webfont extras** — UI icons come from `fonts/materialdesignicons-webfont.ttf`, embedded via font `extras` (13 glyphs in `menu24` incl. `mdi-restart` + `mdi-equalizer`, 7 in `menu32`, 3 in `nav20`). Each icon is exposed as a `text_*` / `wifi_*` substitution so pages reference readable names instead of raw code points.
 
 | Font id | Size | Used for |
 |---|---|---|
@@ -476,7 +484,7 @@ Centralized in [`packages/display-fonts.yaml`](packages/display-fonts.yaml).
 | `f_body` | 17 px | Body text, time labels, LVGL `default_font` (`${font_body}`) |
 | `f_small` | 13 px | Small/muted labels (`${font_small}`) |
 
-Icon substitutions defined: `text_hastatus` (mdi-home-assistant), `text_nav_playing` (mdi-play-circle-outline), `text_nav_settings` (mdi-cogs), `text_nav_stations` (mdi-radio), `wifi_25/50/75/100` (mdi-wifi-strength-1..4), `text_wifi` (mdi-wifi), `text_wifi_cog` (mdi-wifi-cog), `text_play`, `text_pause`, `text_skip_prev`, `text_skip_next`, `text_volume_high`, `text_volume_plus`, `text_volume_minus`, `text_volume_off`, `text_restart` (mdi-restart).
+Icon substitutions defined: `text_hastatus` (mdi-home-assistant), `text_nav_playing` (mdi-play-circle-outline), `text_nav_settings` (mdi-cogs), `text_nav_stations` (mdi-radio), `wifi_25/50/75/100` (mdi-wifi-strength-1..4), `text_wifi` (mdi-wifi), `text_wifi_cog` (mdi-wifi-cog), `text_play`, `text_pause`, `text_skip_prev`, `text_skip_next`, `text_volume_high`, `text_volume_plus`, `text_volume_minus`, `text_volume_off`, `text_restart` (mdi-restart), `text_equalizer` (mdi-equalizer).
 
 ---
 
