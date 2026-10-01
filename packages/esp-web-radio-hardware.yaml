@@ -24,7 +24,6 @@ i2c:
 # Display (AXS15231B QSPI, presented in landscape 480x320)
 # ---------------------------------------------------------------------------
 display:
-#  - platform: axs15231
   - platform: mipi_spi
     model: JC3248W535
     id: main_display
@@ -62,13 +61,19 @@ touchscreen:
               - logger.log: "DBG: WAKE branch - resuming LVGL + backlight on"
               - lvgl.resume:
               - lvgl.widget.redraw:
+              # Wake from global idle = "idle screen": return to Now Playing and
+              # refocus the bottom nav indicator. Overlays (boot screen, OTA,
+              # volume popup) are not touched here - each has its own lifecycle
+              # (the volume popup auto-hides after 5 s via show_volume_popup).
+              - lvgl.page.show: ${homepage}
+              - lambda: 'id(current_page) = 0;'
+              - script.execute: update_nav_indicator
 #    transform:
 #      swap_xy: true
 #      mirror_y: true
 
 # ---------------------------------------------------------------------------
 # Power / status
-# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # LCD backlight. For this panel the driver does NOT manage the backlight, so it
 # is driven by a dedicated PWM (LEDC) output on GPIO1 (active high). Exposed as
@@ -80,10 +85,6 @@ output:
     id: backlight_output
     pin: GPIO1
     frequency: 5000Hz
-# LOW на GPIO16 присоединённый к MSCLK
-#  - platform: gpio
-#    pin: GPIO16
-#    id: sck_gnd    
 
 light:
   - platform: monochromatic

@@ -1,8 +1,11 @@
 # ==============================================================================
-# lvgl_ui.yaml - LVGL framework + pages (landscape 480x320)
+# lvgl_ui.yaml - LVGL framework + connectivity + scripts
 #
-# Three pages: Now Playing, Stations, Settings. A persistent bottom navigation
-# bar is drawn in the LVGL `top_layer` so it is present on every page.
+# Navigable pages: Now Playing, Stations and Settings (plus the locked AP
+# setup page). Swipe order = declaration order: Now Playing(0) -> Stations(1)
+# -> Settings(2); page_ap_setup is skip:true so it never enters the sequence.
+# A transparent bottom nav indicator (3 glyphs in `top_layer`) is present on
+# every page; see README "Bottom nav indicator" for geometry and focus rules.
 #
 # The GLOBAL dark-orange theme and shared styles now live in
 # packages/lvgl_theme.yaml (included from the main config).
@@ -10,9 +13,8 @@
 
 substitutions:
   idle_timeout:          30s
-  lbl_text_font:         menu24
-  btnmtrx_text_font:     menu24
   homepage:              page_now_playing
+  swipeable_page_count:  3          # swipeable pages (page_ap_setup excluded)
 
 # Clock source selection: HA time while connected, local NTP time while WiFi is
 # up, hidden otherwise (see README "Time sync & device modes").
@@ -33,6 +35,14 @@ globals:
     type: bool
     restore_value: no
     initial_value: "false"
+  # Active page slot for the bottom nav indicator: 0 = Now Playing, 1 =
+  # Stations, 2 = Settings. Kept current by every page-change site (swipe
+  # handlers use modulo `${swipeable_page_count}` math - see
+  # swipe_navigation.yaml).
+  - id: current_page
+    type: int
+    restore_value: no
+    initial_value: "0"
 
 script:
   - id: update_clock
@@ -57,6 +67,45 @@ script:
                       text: !lambda 'return id(wifi_time).now().strftime("%H:%M");'
                 else:
                   - lvgl.widget.hide: lbl_time
+
+  # ---------------------------------------------------------------------------
+  # Bottom nav indicator focus (top_layer): each slot swaps between its large
+  # focused label (menu24 + accent) and its small inactive label (nav20 +
+  # muted). Reads the `current_page` global, kept current by every page-change
+  # site (swipe handlers, play_station, exit_ap_mode, wifi.on_connect, on_boot).
+  # See README "Bottom nav indicator".
+  # ---------------------------------------------------------------------------
+  - id: update_nav_indicator
+    then:
+      - if:
+          condition:
+            lambda: 'return id(current_page) == 0;'
+          then:
+            - lvgl.widget.show: nav_lbl_playing_big
+            - lvgl.widget.hide: nav_lbl_playing_small
+            - lvgl.widget.hide: nav_lbl_stations_big
+            - lvgl.widget.show: nav_lbl_stations_small
+            - lvgl.widget.hide: nav_lbl_settings_big
+            - lvgl.widget.show: nav_lbl_settings_small
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(current_page) == 1;'
+                then:
+                  - lvgl.widget.hide: nav_lbl_playing_big
+                  - lvgl.widget.show: nav_lbl_playing_small
+                  - lvgl.widget.show: nav_lbl_stations_big
+                  - lvgl.widget.hide: nav_lbl_stations_small
+                  - lvgl.widget.hide: nav_lbl_settings_big
+                  - lvgl.widget.show: nav_lbl_settings_small
+                else:
+                  # current_page == 2: Settings focused (cogs slot active).
+                  - lvgl.widget.hide: nav_lbl_playing_big
+                  - lvgl.widget.show: nav_lbl_playing_small
+                  - lvgl.widget.hide: nav_lbl_stations_big
+                  - lvgl.widget.show: nav_lbl_stations_small
+                  - lvgl.widget.show: nav_lbl_settings_big
+                  - lvgl.widget.hide: nav_lbl_settings_small
 
   # ---------------------------------------------------------------------------
   # AP mode (fallback access point + captive portal): driven by polling
@@ -99,6 +148,8 @@ script:
           then:
             - lvgl.page.show: ${homepage}   # back to Now Playing
             - lambda: 'id(ap_page_shown) = false;'
+            - lambda: 'id(current_page) = 0;'
+            - script.execute: update_nav_indicator
       # wifi_status visibility is now governed again by wifi.on_connect/
       # on_disconnect (station up => shown, down => hidden).
 
@@ -335,6 +386,8 @@ script:
                   if (s == 3) return "${offline_station_3_name}";
                   return "${offline_station_4_name}";
       - lvgl.page.show: ${homepage}   # back to Now Playing after selection
+      - lambda: 'id(current_page) = 0;'
+      - script.execute: update_nav_indicator
 
 api:
   on_client_connected:
@@ -361,7 +414,7 @@ api:
         - script.execute: update_clock
         - script.execute: refresh_stations
 
-wifi:    
+wifi:
   on_connect:
     - logger.log: "WiFi connected"
     - lvgl.widget.hide: boot_screen
@@ -372,6 +425,7 @@ wifi:
     - lambda: 'id(wifi_connected) = true;'
     - script.execute: update_clock
     - script.execute: refresh_stations   # offline names first; HA names arrive on api connect
+    - script.execute: refresh_settings_info   # Info page: seed the WiFi row
     # Safety net: if we reconnect while the AP setup page is still up,
     # return to Now Playing immediately (the interval is dormant while connected).
     - if:
@@ -382,11 +436,14 @@ wifi:
           - lvgl.widget.show: top_layer
           - lvgl.page.show: ${homepage}
           - lambda: 'id(ap_page_shown) = false;'
+          - lambda: 'id(current_page) = 0;'
+          - script.execute: update_nav_indicator
   on_disconnect:
     - logger.log: "WiFi disconnected"
     - lvgl.widget.hide: wifi_status
     - lambda: 'id(wifi_connected) = false;'
     - script.execute: update_clock
+    - script.execute: refresh_settings_info   # Info page: dim the WiFi row
     
 ota:        # OTA progress bar popup
   - platform: esphome
@@ -481,9 +538,12 @@ lvgl:
     bg_color: ${color_surface_alt}
     bg_opa: COVER
 
-  top_layer:        # for cross-page status indicators and buttons
+  top_layer:        # cross-page status indicators + bottom nav indicator
     # Swipe navigation moved to the pages via common/swipe_navigation.yaml:
     # the top_layer never receives gesture events (see logs/log_2040.txt).
+    # The bottom indicator (widget id: top_layer) replaces the old prev/home/
+    # next buttonmatrix - it is a PURE indicator (clickable: false); page
+    # navigation happens by swiping only.
     widgets:
       - obj:      # boot screen with rotating arc till wifi connects
           id: boot_screen
@@ -569,44 +629,98 @@ lvgl:
           text_font: menu24
           text_align: right
           text_color: ${color_accent}
-      - buttonmatrix:     # cross-page buttons
-          align: bottom_mid
-          styles: header_footer
-          pad_all: 0
-          outline_width: 0
+      # Bottom nav indicator: 1/3 of the screen wide, transparent, centered at
+      # the screen bottom. Height = focused glyph (menu24 = 24 px) + 1 px pad;
+      # top edge lands at y=294, exactly where the Now Playing controls row
+      # (mp_controls, y 250 + 44) ends. Slots in page order: Now Playing,
+      # Stations, Settings (real page since the Info/Settings implementation).
+      # The focused slot shows its big
+      # (menu24, accent) label, the others their small (nav20, muted) one -
+      # swapping is done by update_nav_indicator (hide/show only, no reflow).
+      - obj:
           id: top_layer
-          items:
-            styles: header_footer
-          rows:
-            - buttons:
-              - id: page_prev
-                text: ${text_prev}
-                on_press:
-                  then:
-                    - if:
-                        condition:
-                          not:
-                            - wifi.ap_active
-                        then:
-                          - lvgl.page.previous:
-              - id: page_home
-                text: ${text_home}
-                on_press:
-                  then:
-                    - if:
-                        condition:
-                          not:
-                            - wifi.ap_active
-                        then:
-                          - lvgl.page.show: ${homepage}
-              - id: page_next
-                text: ${text_next}
-                on_press:
-                  then:
-                    - if:
-                        condition:
-                          not:
-                            - wifi.ap_active
-                        then:
-                          - lvgl.page.next:
+          align: bottom_mid
+          y: 0
+          width: 160                 # 1/3 of the 480 px screen
+          height: 26                 # 24 px focused glyph + 1 px top/bottom
+          bg_opa: TRANSP             # transparent background
+          border_width: 0
+          pad_all: 0
+          clickable: false           # pure indicator - never intercepts touches
+          widgets:
+            - obj:      # slot 1 - Now Playing (mdi-play-circle-outline)
+                id: nav_slot_playing
+                x: 0
+                y: 0
+                width: 53
+                height: 26
+                bg_opa: TRANSP
+                border_width: 0
+                pad_all: 0
+                clickable: false
+                widgets:
+                  - label:
+                      id: nav_lbl_playing_big
+                      align: CENTER
+                      text: ${text_nav_playing}
+                      text_font: menu24
+                      text_color: ${color_accent}
+                  - label:
+                      id: nav_lbl_playing_small
+                      align: CENTER
+                      text: ${text_nav_playing}
+                      text_font: nav20
+                      text_color: ${color_text_muted}
+                      hidden: true
+            - obj:      # slot 2 - Stations (mdi-radio)
+                id: nav_slot_stations
+                x: 53
+                y: 0
+                width: 53
+                height: 26
+                bg_opa: TRANSP
+                border_width: 0
+                pad_all: 0
+                clickable: false
+                widgets:
+                  - label:
+                      id: nav_lbl_stations_big
+                      align: CENTER
+                      text: ${text_nav_stations}
+                      text_font: menu24
+                      text_color: ${color_accent}
+                      hidden: true
+                  - label:
+                      id: nav_lbl_stations_small
+                      align: CENTER
+                      text: ${text_nav_stations}
+                      text_font: nav20
+                      text_color: ${color_text_muted}
+            # Slot 3 - Settings (mdi-cogs): real page now (page_settings, the
+            # third swipeable page). Focused when current_page == 2 - handled
+            # by update_nav_indicator.
+            - obj:
+                id: nav_slot_settings
+                x: 106
+                y: 0
+                width: 53
+                height: 26
+                bg_opa: TRANSP
+                border_width: 0
+                pad_all: 0
+                clickable: false
+                widgets:
+                  - label:
+                      id: nav_lbl_settings_big
+                      align: CENTER
+                      text: ${text_nav_settings}
+                      text_font: menu24
+                      text_color: ${color_accent}
+                      hidden: true
+                  - label:
+                      id: nav_lbl_settings_small
+                      align: CENTER
+                      text: ${text_nav_settings}
+                      text_font: nav20
+                      text_color: ${color_text_muted}
   page_wrap: true

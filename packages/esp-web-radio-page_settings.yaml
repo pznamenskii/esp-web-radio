@@ -1,0 +1,221 @@
+# ==============================================================================
+# page_settings.yaml - Info/Settings page (landscape 480x320)
+#
+# The third swipeable page (Now Playing <-> Stations <-> Settings); covers the
+# TODO "Info/Settings page" items:
+#   - WiFi signal level: strength icon (wifi_25/50/75/100 picked by RSSI
+#     thresholds) + numeric dBm label. Source: the LOCAL `wifi_signal` sensor
+#     (re-added in esp-web-radio-homeassistant.yaml) - the ESP32 radio measures
+#     itself, so it works in wifi_only/no-HA mode too (no HA entity needed).
+#   - Uptime: `uptime` + `uptime_human` (days/hours/minutes), re-added in
+#     esp-web-radio-homeassistant.yaml.
+#   - Startup volume: `startup_volume` global, captured in `on_boot` right
+#     after `sync_volume_ui` reads the component-restored volume
+#     (esp-web-radio.yaml); component restore happens during setup (before
+#     on_boot), so the read is already the persisted boot value.
+#   - Idle/inactivity behavior (no settings row - it is behavior, not data):
+#     the volume popup already auto-dismisses after 5 s of inactivity
+#     (`show_volume_popup`, mode: restart, page_now_playing.yaml), and waking
+#     the device from global idle (LVGL `on_idle` sleep) returns to Now Playing
+#     - implemented in the native `touchscreen.on_release` wake handler in
+#     esp-web-radio-hardware.yaml (no extra timer scripts, per project review).
+#
+# Geometry: 3 fixed info rows (48 px tall, 56 px pitch) ending at y=214, well
+# above the bottom nav bar (top edge y=294). Static-layout contract: hide/show
+# only, fixed positions - no reflow.
+# ==============================================================================
+
+globals:
+  # Volume restored at boot, captured in `on_boot` right after `sync_volume_ui`
+  # reads `id(esp_media_player).volume`. Component restore runs during setup
+  # (before on_boot), so the capture is the true boot volume; if that ever
+  # moves after boot, re-read lazily when this page is first shown instead.
+  - id: startup_volume
+    type: float
+    restore_value: no
+    initial_value: "0.5"
+
+script:
+  # ---------------------------------------------------------------------------
+  # Single writer for the three live info rows (startup volume, uptime, WiFi
+  # signal). Called from: on_boot (seeds the page before it can be shown),
+  # wifi_signal / uptime_human on_value (esp-web-radio-homeassistant.yaml) and
+  # wifi.on_connect / on_disconnect (esp-web-radio-lvgl_ui.yaml).
+  # RSSI -> icon thresholds: >= -50 dBm = wifi_100, >= -65 = wifi_75,
+  # >= -78 = wifi_50, else wifi_25. WiFi down: lowest bar, muted, dBm hidden.
+  # ---------------------------------------------------------------------------
+  - id: refresh_settings_info
+    then:
+      - lvgl.label.update:
+          id: settings_lbl_startup_vol
+          text: !lambda |-
+            int v = (int)(id(startup_volume) * 100.0f);
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%d%%", v);
+            return buf;
+      - lvgl.label.update:
+          id: settings_lbl_uptime
+          text: !lambda |-
+            if (id(uptime_human).has_state()) return id(uptime_human).state.c_str();
+            return "—";
+      - if:
+          condition:
+            lambda: 'return id(wifi_connected) && id(wifi_signal).has_state();'
+          then:
+            - lvgl.label.update:
+                id: settings_lbl_wifi_icon
+                text: !lambda |-
+                  float rssi = id(wifi_signal).state;
+                  if (rssi >= -50.0f) return "${wifi_100}";
+                  if (rssi >= -65.0f) return "${wifi_75}";
+                  if (rssi >= -78.0f) return "${wifi_50}";
+                  return "${wifi_25}";
+            - lambda: 'lv_obj_set_style_text_color(id(settings_lbl_wifi_icon), lv_color_hex(${color_accent}), 0);'
+            - lvgl.label.update:
+                id: settings_lbl_rssi
+                text: !lambda |-
+                  char buf[16];
+                  snprintf(buf, sizeof(buf), "%.0f dBm", id(wifi_signal).state);
+                  return buf;
+            - lvgl.widget.show: settings_lbl_rssi
+          else:
+            - lvgl.label.update:
+                id: settings_lbl_wifi_icon
+                text: "${wifi_25}"
+            - lambda: 'lv_obj_set_style_text_color(id(settings_lbl_wifi_icon), lv_color_hex(${color_text_muted}), 0);'
+            - lvgl.widget.hide: settings_lbl_rssi
+
+lvgl:
+  pages:
+    - id: page_settings
+      pad_all: 0
+      scrollbar_mode: "OFF"
+      # Swipe navigation: shared handlers from swipe_navigation.yaml - the page
+      # is the third swipeable page; the modulo math there keeps current_page
+      # in sync (2 = Settings) so update_nav_indicator focuses the cogs slot.
+      <<: !include swipe_navigation.yaml
+      widgets:
+        - label:        # title icon - cogs (mdi-cogs, menu24)
+            id: settings_lbl_title_icon
+            x: 16
+            y: 10
+            width: 32
+            height: 32
+            text: "${text_nav_settings}"
+            text_font: menu24
+            text_color: ${color_accent}
+        - label:
+            id: settings_lbl_title
+            styles: text_title
+            x: 52
+            y: 12
+            width: 240
+            height: 30
+            text: "Настройки"
+            text_align: LEFT
+        # ── Row 1: WiFi signal (RSSI icon + dBm) ──
+        - obj:
+            id: settings_row_wifi
+            styles: station_button
+            x: 16
+            y: 54
+            width: 448
+            height: 48
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: settings_lbl_wifi_icon
+                  x: 14
+                  y: 8
+                  width: 32
+                  height: 32
+                  text: "${wifi_25}"
+                  text_font: menu24
+                  text_color: ${color_accent}
+              - label:
+                  id: settings_lbl_wifi_caption
+                  styles: text_body
+                  x: 54
+                  y: 0
+                  width: 220
+                  height: 48
+                  text: "Сигнал WiFi"
+                  text_align: LEFT
+              - label:
+                  id: settings_lbl_rssi
+                  styles: text_body
+                  hidden: true
+                  x: 280
+                  y: 0
+                  width: 152
+                  height: 48
+                  text: ""
+                  text_align: RIGHT
+        # ── Row 2: uptime (days/hours/minutes) ──
+        - obj:
+            id: settings_row_uptime
+            styles: station_button
+            x: 16
+            y: 110
+            width: 448
+            height: 48
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: settings_lbl_uptime_caption
+                  styles: text_body
+                  x: 54
+                  y: 0
+                  width: 220
+                  height: 48
+                  text: "Время работы"
+                  text_align: LEFT
+              - label:
+                  id: settings_lbl_uptime
+                  styles: text_body
+                  x: 280
+                  y: 0
+                  width: 152
+                  height: 48
+                  text: "—"
+                  text_align: RIGHT
+        # ── Row 3: startup volume (captured at boot) ──
+        - obj:
+            id: settings_row_startup_vol
+            styles: station_button
+            x: 16
+            y: 166
+            width: 448
+            height: 48
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: settings_lbl_startup_vol_icon
+                  x: 14
+                  y: 8
+                  width: 32
+                  height: 32
+                  text: "${text_volume_high}"
+                  text_font: menu24
+                  text_color: ${color_accent}
+              - label:
+                  id: settings_lbl_startup_vol_caption
+                  styles: text_body
+                  x: 54
+                  y: 0
+                  width: 220
+                  height: 48
+                  text: "Громкость при запуске"
+                  text_align: LEFT
+              - label:
+                  id: settings_lbl_startup_vol
+                  styles: text_body
+                  x: 280
+                  y: 0
+                  width: 152
+                  height: 48
+                  text: "50%"
+                  text_align: RIGHT

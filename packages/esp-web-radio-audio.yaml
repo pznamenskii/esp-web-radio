@@ -24,7 +24,7 @@ i2s_audio:
   i2s_mclk_pin: GPIO16
 
 speaker:
-  # Базовый I2S-выход на PCM5102A
+  # Base I2S output to the PCM5102A
   - platform: i2s_audio
     id: i2s_speaker
     dac_type: external
@@ -33,7 +33,7 @@ speaker:
     sample_rate: 48000
     bits_per_sample: 16bit
 
-  # Mixer: объединяет media и announcement в один выход
+  # Mixer: merges the media + announcement pipelines into one output
   - platform: mixer
     id: main_mixer_speaker
     output_speaker: i2s_speaker
@@ -41,22 +41,20 @@ speaker:
       - id: announcement_mixer_input
       - id: media_mixer_input
 
-  # Resampler для media-пайплайна
+  # Resampler for the media pipeline
   - platform: resampler
     id: main_media_resampler
     output_speaker: media_mixer_input
     sample_rate: 48000
-#    bits_per_sample: 16bit
 
-  # Resampler для announcement-пайплайна
+  # Resampler for the announcement pipeline
   - platform: resampler
     id: main_announcement_resampler
     output_speaker: announcement_mixer_input
     sample_rate: 48000
-#    bits_per_sample: 16bit
 
 # ──────────────────────────────────────
-# MUTE: GPIO7 → XSMT на PCM5102A (active LOW)
+# MUTE: GPIO7 → PCM5102A XSMT pin (active LOW)
 # ──────────────────────────────────────
 switch:
   - platform: gpio
@@ -87,7 +85,7 @@ media_player:
     # ESP_ERR_NOT_SUPPORTED; HA mode still works because HA transcodes to FLAC.
     media_pipeline:
       speaker: main_media_resampler
-      format: NONE          # <-- Включает все декодеры (MP3, FLAC, OPUS, WAV)
+      format: NONE          # compile all decoders (MP3, FLAC, OPUS, WAV)
       num_channels: 2
       # sample_rate intentionally omitted: for native URLs the pipeline derives
       # it from the stream itself; HA transcoding falls back to the speaker's
@@ -97,6 +95,12 @@ media_player:
       format: FLAC
       num_channels: 1
       sample_rate: 48000
+
+    # Native step size for `media_player.volume_up` / `media_player.volume_down`
+    # (matches the documented 5% default; explicit makes it self-documenting).
+    # Build-time check item: if the installed ESPHome speaker platform does not
+    # accept `volume_increment`, drop this line and rely on the default.
+    volume_increment: 0.05
 
     # Imp 4/6: native play-state hooks — drive mp_visualizer visibility and the
     # play/pause glyph on mp_lbl_play_icon in EVERY mode (incl. no-HA), and keep
@@ -123,37 +127,74 @@ media_player:
       - logger.log: "media player idle"
       - lambda: 'id(player_playing) = false;'
       - lvgl.widget.hide: mp_visualizer
+      # Imp 7/8: on stop HA clears media_position/media_duration (sensors go
+      # unknown and never fire again), so the time labels + progress bar are
+      # hidden here; the position/duration on_value handlers re-show them.
+      - lvgl.widget.hide: mp_lbl_elapsed
+      - lvgl.widget.hide: mp_lbl_total
+      - lvgl.widget.hide: mp_bar_progress
       - lvgl.label.update:
           id: mp_lbl_play_icon
           text: ${text_play}
 
-#          // 2. Синхронизация LVGL (play/pause + статус)
-#          auto *play_btn = id(play_button);
-#          auto *status_lbl = id(status_label);
-#
-#          if (x == "playing") {
-#            play_btn->set_checked(true);
-#            status_lbl->set_text("ON AIR");
-#          } else {
-#            play_btn->set_checked(false);
-#            status_lbl->set_text("STOPPED");
-#          }
-
-#    on_mute:
-#      - switch.turn_on: dac_mute
-#      - lvgl.widget.update:
-#          id: mute_button
-#          state:
-#            checked: true
-
-#    on_unmute:
-#      - switch.turn_off: dac_mute
-#      - lvgl.widget.update:
-#          id: mute_button
-#          state:
-#            checked: false
-
-#    on_volume:
-#      - lvgl.slider.update:
-#          id: volume_slider
-#          value: !lambda 'return (int) (x * 100.0f);'
+    # ──────────────────────────────────────────────────────────────────────────
+    # Volume/mute hooks — EVENT-DRIVEN (plans/refactor-media-player-hooks.md).
+    # The speaker component is the single source of truth for volume & mute:
+    # local commands (volume_up/volume_down/volume_set/volume_mute) and
+    # HA-originated changes arriving via the native API all surface here as
+    # trigger events. These handlers are pure reactions (UI sync + DAC hardware
+    # mute + guarded HA mute push); they contain no command logic.
+    #
+    # Loop protection (plan §"Loop protection strategy"): the volume path never
+    # pushes to HA (device->HA publication covers it), so no echo loop is
+    # possible. The mute path keeps ONE guarded push here, latched via
+    # `volume_mute_last_pushed` immediately after each push; the guard exists in
+    # exactly these two handlers and nowhere else.
+    # ──────────────────────────────────────────────────────────────────────────
+    on_mute:
+      - lambda: 'id(volume_muted) = true;'
+      - switch.turn_on: dac_mute          # XSMT active-low: ON -> LOW -> DAC muted
+      - lambda: 'lv_obj_set_style_text_color(id(mp_lbl_mute_icon), lv_color_hex(${color_accent}), 0);'
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && !id(volume_mute_last_pushed);'
+          then:
+            # D1: guarded HA push - device->HA `is_volume_muted` publication is
+            # the one unproven direction; delete this push + the guard once
+            # on-device test 4 proves the attribute auto-mirrors (plan D1-B).
+            - homeassistant.action:
+                action: media_player.volume_mute
+                data:
+                  entity_id: media_player.esp_media_player
+                  is_volume_muted: "true"
+            - lambda: 'id(volume_mute_last_pushed) = true;'
+    on_unmute:
+      - lambda: 'id(volume_muted) = false;'
+      - switch.turn_off: dac_mute          # XSMT: OFF -> HIGH -> DAC unmuted
+      - lambda: 'lv_obj_set_style_text_color(id(mp_lbl_mute_icon), lv_color_hex(${color_text_muted}), 0);'
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(volume_mute_last_pushed);'
+          then:
+            - homeassistant.action:
+                action: media_player.volume_mute
+                data:
+                  entity_id: media_player.esp_media_player
+                  is_volume_muted: "false"
+            - lambda: 'id(volume_mute_last_pushed) = false;'
+    on_volume:
+      # Fires for EVERY volume change regardless of source. `x` = new volume as
+      # float 0..1. Single universal sync point for the popup slider + percent
+      # label. Deliberately does NOT call show_volume_popup - the popup is a
+      # response to a local touch, not to state changes (plan D5).
+      - lambda: 'id(volume_level) = x;'
+      - lvgl.slider.update:
+          id: volume_slider
+          value: !lambda 'return (int)(x * 100.0f);'
+      - lvgl.label.update:
+          id: mp_lbl_volume
+          text: !lambda |-
+            int v = (int)(x * 100.0f);
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%d%%", v);
+            return buf;
