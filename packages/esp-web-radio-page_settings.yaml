@@ -4,7 +4,7 @@
 # The third swipeable page (Now Playing <-> Stations <-> Settings); covers the
 # TODO "Info/Settings page" items:
 #   - WiFi signal level: strength icon (wifi_25/50/75/100 picked by RSSI
-#     thresholds) + numeric dBm label. Source: the LOCAL `wifi_signal` sensor
+#     thresholds) + numeric dBm label. Source: the LOCAL `wifi_level` sensor
 #     (re-added in esp-web-radio-homeassistant.yaml) - the ESP32 radio measures
 #     itself, so it works in wifi_only/no-HA mode too (no HA entity needed).
 #   - Uptime: `uptime` + `uptime_human` (days/hours/minutes), re-added in
@@ -80,7 +80,7 @@ script:
   # ---------------------------------------------------------------------------
   # Single writer for the live info rows (startup volume, uptime, WiFi signal,
   # last reset reason). Called from: on_boot (seeds the page before it can be
-  # shown), wifi_signal / uptime_human on_value
+  # shown), wifi_level / uptime_human on_value
   # (esp-web-radio-homeassistant.yaml), reset_reason on_value
   # (esp-web-radio.yaml), wifi.on_connect / on_disconnect
   # (esp-web-radio-lvgl_ui.yaml) and the startup-volume popup on_release.
@@ -103,7 +103,7 @@ script:
             return "—";
       - if:
           condition:
-            lambda: 'return id(wifi_connected) && id(wifi_signal).has_state();'
+            lambda: 'return id(wifi_connected) && id(wifi_level).has_state();'
           then:
             - lvgl.label.update:
                 id: settings_lbl_wifi_icon

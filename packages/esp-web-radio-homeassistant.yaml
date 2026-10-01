@@ -359,7 +359,7 @@ sensor:
   # too; publishes no state while disconnected (the refresh script dims the
   # row). Re-added from the pre-cleanup state.
   - platform: wifi_signal
-    id: wifi_signal
+    id: wifi_level
     name: "WiFi Signal"
     update_interval: 60s
     on_value:
