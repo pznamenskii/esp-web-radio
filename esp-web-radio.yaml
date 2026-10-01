@@ -18,6 +18,18 @@ esphome:
   friendly_name: ESP Internet Radio
   comment: "ESP32-S3 WiFi internet radio (JC3248W535C display + PCM5102 DAC)"
   on_boot:
+    # Diagnostics: boot summary. The reset reason is reported by the RTC/IDF and
+    # SURVIVES software reboots (see plans/troubleshooting-restarts.md), so a
+    # spontaneous restart followed by an auto-reboot leaves a clear marker here.
+    - logger.log:
+        level: INFO
+        tag: diag
+        format: "BOOT reset_reason=%s uptime=%d s heap_free=%.0f B psram_free=%.0f B"
+        args:
+          - 'id(reset_reason).has_state() ? id(reset_reason).state.c_str() : "unknown"'
+          - 'id(uptime).has_state() ? (int) id(uptime).state : -1'
+          - 'id(heap_free).has_state() ? id(heap_free).state : -1.0f'
+          - 'id(psram_free).has_state() ? id(psram_free).state : -1.0f'
     - lvgl.page.show: page_now_playing
     - light.turn_on: backlight
     - lambda: 'id(boot_done) = true;'
@@ -86,6 +98,20 @@ packages:
   page_settings:  !include esp-web-radio/packages/esp-web-radio-page_settings.yaml
 
 # ---------------------------------------------------------------------------
+# Custom components (plans/visualizer.md): spectrum_tap taps the PCM stream
+# between the mixer and the I2S DAC for the 16-band FFT audio visualizer on
+# the Now Playing page. Loaded explicitly via `external_components` (ESPHome
+# would also auto-discover custom_components/, this makes the dependency
+# deterministic and self-documenting). Source lives in custom_components/
+# spectrum_tap/ - extracted verbatim from plans/spectrum_tap.zip.
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: local
+      path: esp-web-radio/custom_components
+    components: [spectrum_tap]
+
+# ---------------------------------------------------------------------------
 # Connectivity
 # ---------------------------------------------------------------------------
 wifi:
@@ -99,8 +125,22 @@ wifi:
 
 captive_portal:
 
+# ---------------------------------------------------------------------------
+# Logging / diagnostics (see plans/troubleshooting-restarts.md)
+#
+# Level: keep `DEBUG` as the steady state (default; cheap since ESPHome 2026.4
+# moved routine state-change messages to VERBOSE). Switch to `VERBOSE` ONLY
+# while reproducing a crash - it adds IDF heap/backtrace detail but slows the
+# device, can destabilize audio/LVGL timing and must not be left on long-term.
+#
+# Transport: on the ESP32-S3 the logger default hardware UART is USB_SERIAL_JTAG
+# (GPIO19/20 native USB) at 115200 baud - the path used for the captured serial
+# logs in logs/*.txt. Do not change hardware_uart unless the capture setup
+# changes (I2S/LVGL are unaffected by the log UART).
+# ---------------------------------------------------------------------------
 logger:
   level: DEBUG
+  baud_rate: 115200
 
 # Home Assistant native API
 api:
@@ -109,6 +149,74 @@ api:
 
 ota:
   - platform: esphome
+
+# ---------------------------------------------------------------------------
+# Diagnostics (plans/troubleshooting-restarts.md)
+#
+# The `debug` component (https://esphome.io/components/debug/) publishes the
+# last reset reason and memory health. On ESP-IDF the heap sensors report the
+# internal DRAM heap; `psram` reports free PSRAM (the audio pipeline + LVGL run
+# mostly from there). Values also become HA entities (default, internal:false),
+# so HA history shows the memory trend across restarts.
+#
+# NOTE on the schema: this follows the CURRENT official docs (nested keys,
+# e.g. `free:` / `reset_reason:`). If the installed ESPHome release predates
+# that schema it must be switched back to the legacy `type:` form
+# (see plans/troubleshooting-restarts.md, "Not verified locally").
+# ---------------------------------------------------------------------------
+debug:
+  update_interval: 60s
+
+sensor:
+  - platform: debug
+    free:
+      id: heap_free
+      name: "Heap Free"
+    min_free:
+      id: heap_min_free
+      name: "Heap Min Free"
+    block:
+      id: heap_block
+      name: "Heap Max Block"
+    fragmentation:
+      id: heap_fragmentation
+      name: "Heap Fragmentation"
+    psram:
+      id: psram_free
+      name: "Free PSRAM"
+    loop_time:
+      id: loop_time
+      name: "Loop Time"
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      id: reset_reason
+      name: "Reset Reason"
+      on_value:
+        - script.execute: refresh_settings_info   # Info page: (re)seed the reset-reason row
+
+# ---------------------------------------------------------------------------
+# Heartbeat diagnostics: one low-frequency INFO line every 15 minutes with
+# uptime + heap/PSRAM state. In a captured serial log this shows the memory
+# trend BEFORE a spontaneous restart (heap exhaustion, fragmentation growth)
+# while staying quiet enough for long-term operation.
+# ---------------------------------------------------------------------------
+interval:
+  - id: heartbeat_diag
+    interval: 15min
+    then:
+      - logger.log:
+          level: INFO
+          tag: diag
+          format: "HEARTBEAT uptime=%d s heap_free=%.0f B heap_min_free=%.0f B frag=%.1f%% psram_free=%.0f B loop_time=%.0f"
+          args:
+            - 'id(uptime).has_state() ? (int) id(uptime).state : -1'
+            - 'id(heap_free).has_state() ? id(heap_free).state : -1.0f'
+            - 'id(heap_min_free).has_state() ? id(heap_min_free).state : -1.0f'
+            - 'id(heap_fragmentation).has_state() ? id(heap_fragmentation).state : -1.0f'
+            - 'id(psram_free).has_state() ? id(psram_free).state : -1.0f'
+            - 'id(loop_time).has_state() ? id(loop_time).state : -1.0f'
 
 globals:
   - id: boot_done

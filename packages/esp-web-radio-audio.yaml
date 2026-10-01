@@ -33,10 +33,20 @@ speaker:
     sample_rate: 48000
     bits_per_sample: 16bit
 
+  # Spectrum tap (custom speaker passthrough, plans/visualizer.md): sits
+  # between the mixer and the I2S output, transparently forwards every PCM
+  # frame to i2s_speaker and feeds a 128-point FFT (16 bands -> spec_bands[])
+  # for the Now Playing visualizer (custom_components/spectrum_tap). Audio is
+  # untouched: the mixer just sees it as its output speaker. FFT work happens
+  # only while play() flows (i.e. while playing), so idle/paused costs nothing.
+  - platform: spectrum_tap
+    id: spectrum_tap_speaker
+    output_speaker: i2s_speaker
+
   # Mixer: merges the media + announcement pipelines into one output
   - platform: mixer
     id: main_mixer_speaker
-    output_speaker: i2s_speaker
+    output_speaker: spectrum_tap_speaker
     source_speakers:
       - id: announcement_mixer_input
       - id: media_mixer_input

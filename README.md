@@ -14,6 +14,7 @@ ESP32-S3 WiFi internet radio with a 480×320 LVGL touchscreen UI, I2S output to 
 - [Theming system](#theming-system)
 - [UI architecture & page bindings](#ui-architecture--page-bindings)
 - [Time sync & device modes](#time-sync--device-modes)
+- [Diagnostics & troubleshooting](#diagnostics--troubleshooting)
 - [Font strategy](#font-strategy)
 - [Roadmap](#roadmap)
 - [Development conventions](#development-conventions)
@@ -24,15 +25,17 @@ ESP32-S3 WiFi internet radio with a 480×320 LVGL touchscreen UI, I2S output to 
 
 - **Now Playing page** — full 480×320 LVGL page showing:
   - Station title, artist, and track labels (long text scrolls; artist/track auto-hide when empty)
-  - The station logo / album-art panels and the visualizer strip hide automatically whenever their data is absent (logo waits for the station-picture roadmap item; art follows the `media_image_url` attribute; the visualizer shows only while playing)
+  - Station logo / album-art panels hide automatically whenever their data is absent (logo waits for the station-picture roadmap item; art follows the `media_image_url` attribute)
+  - **Live audio spectrum visualizer** — while playing, the `mp_visualizer` strip animates 16 FFT bands (accent-colored bars) fed by the custom `spectrum_tap` speaker that taps the PCM between the mixer and the I2S DAC (see [Audio visualizer](#audio-visualizer)); the strip (and bars) hide on pause/idle with it
   - Progress bar plus elapsed (`mm:ss`) and total (`mm:ss`) time labels — the whole cluster hides while its data is absent (elapsed needs a media position; total and the bar need a media duration; `on_idle` re-hides everything when the player stops)
   - Transport controls: station prev/next, play/pause, mute (-/+ with a popup slider)
 - **Stations page** — a second LVGL page listing every available station as a button: a dynamic 2×6 grid (up to 12 slots) filled from the HA station-name sensors while the API is connected, or from the hardcoded offline list when it is not. Empty slots hide automatically; a vertical scrollbar appears once more than 8 stations are active; pressing a station plays it and returns to Now Playing.
-- **Info/Settings page** — the third swipeable LVGL page with device info: **WiFi signal level** (signal-strength icon `wifi_25/50/75/100` picked by RSSI thresholds −50/−65/−78 dBm plus a numeric dBm label; driven by the local `wifi_signal` sensor, which measures the ESP32 radio itself — so it also works in wifi-only/no-HA mode), **uptime** (`uptime` + `uptime_human`, formatted days/hours/minutes), and the **startup volume** (the `startup_volume` global captured in `on_boot` right after `sync_volume_ui` restores the persisted volume, shown as a percentage). The page uses only glyphs already embedded in `menu24` (cogs, wifi-strength, volume-high), so it adds no flash cost.
+- **Info/Settings page** — the third swipeable LVGL page with device info: **WiFi signal level** (signal-strength icon `wifi_25/50/75/100` picked by RSSI thresholds −50/−65/−78 dBm plus a numeric dBm label; driven by the local `wifi_signal` sensor, which measures the ESP32 radio itself — so it also works in wifi-only/no-HA mode), **uptime** (`uptime` + `uptime_human`, formatted days/hours/minutes), **startup volume** (the `startup_volume` global captured in `on_boot` right after `sync_volume_ui` restores the persisted volume, shown as a percentage), and **last reset reason** (the `debug.reset_reason` text sensor — power-on/software/watchdog/brownout etc.; the reason survives software reboots, so it names what ended the previous session; the row shows only while the sensor has a state). All icons come from `menu24` (cogs, wifi-strength, volume-high) plus one new 24 px glyph `mdi-restart` for the reset-reason row — negligible flash cost.
 - **No-HA local stations** — with WiFi up but the Home Assistant API unreachable, the Stations page falls back to the built-in list in [`packages/esp-web-radio-offline_stations.yaml`](packages/esp-web-radio-offline_stations.yaml) and playback goes straight to the direct stream URL via the local media player. When HA reconnects, station names and playback routing switch back to Home Assistant automatically.
 - **Home Assistant integration** — encrypted native API; the player, DAC mute switch, and media info are exposed automatically. A status indicator in the top layer (`lbl_hastatus`, `mdi-home-assistant` glyph) appears when a Home Assistant client connects and disappears on disconnect.
 - **Clock with local fallback** — the title-bar clock (`lbl_time`) shows HA-provided time while the API is connected; when WiFi is up but HA is not, it falls back to an NTP-maintained local clock (`sntp`, `pool.ntp.org` / `time.google.com`); with no WiFi the clock hides. See [Time sync & device modes](#time-sync--device-modes).
 - **OTA updates** — ESPHome OTA with an on-screen popup showing a live progress bar and percentage (`ota_popup` with `ota_bar_percentage` / `ota_lbl_percentage`).
+- **Diagnostics & troubleshooting** — the `debug` component publishes the **last reset reason** (`reset_reason`) plus heap/PSRAM health sensors (`heap_free`, `heap_min_free`, `heap_block`, `heap_fragmentation`, `psram_free`, `loop_time`) as HA entities; the boot log prints a `BOOT` summary line (reset reason + heap at startup) and a low-frequency `HEARTBEAT` line (every 15 min: uptime, heap/PSRAM, fragmentation, loop time) paints the memory trend up to any spontaneous restart. Full investigation, workflow and mitigation knobs: [`plans/troubleshooting-restarts.md`](plans/troubleshooting-restarts.md).
 - **Swipe / page navigation** — swipe left/right cycles the three navigable pages (Now Playing → Stations → Settings) with `OUT_LEFT` / `OUT_RIGHT` animations (300 ms); a transparent bottom **nav glyph indicator** in the LVGL `top_layer` marks the active page (the focused glyph renders larger than the others). `page_wrap: true` wraps around.
 - **WiFi setup (AP mode) page** — when the fallback access point + captive portal becomes active (`wifi.ap_active`), the display switches to a locked `page_ap_setup` page showing the AP network name (`ap_ssid`, default "ESP Radio Fallback"), the AP password (from `!secret ap_password`, shown via `ap_password_display`), the setup URL (`${ap_url}`, default http://192.168.4.1), and a scannable **QR code** (`ap_qr`) encoding the WiFi connection string `WIFI:T:WPA;S:${ap_ssid};P:${ap_password};;` — scanning it joins the fallback AP directly. The page cannot be swiped/navigated away from and clears automatically back to Now Playing when the station reconnects; while it is up, the top-layer `wifi_status` icon blinks the `wifi-cog` glyph at ~400 ms and the LVGL idle timer is disabled so the page stays lit. See [UI architecture & page bindings](#ui-architecture--page-bindings).
 - **Boot & idle UX** — spinner boot screen stays up until the first of: user touch, WiFi connects, or AP mode becomes active (shows the setup page instead). After 15 s of inactivity the backlight fades out and LVGL pauses with a "snow" pattern (LCD burn-in protection); any touch wakes the device — waking returns straight to the Now Playing page (the "idle screen"). Idle never triggers while the fallback AP + captive portal are active (`wifi.ap_active`), so the setup page stays lit.
@@ -125,7 +128,9 @@ python tests/font_codepoint_check.py   # every MDI codepoint exists in the webfo
 ```
 esp-web-radio/
 ├── esp-web-radio.yaml                     # Entry point: platform, board, flash/PSRAM,
-│                                          #   packages list, wifi/api/ota,
+│                                          #   packages list, wifi/api/ota, logger +
+│                                          #   debug diagnostics (reset reason, heap/
+│                                          #   PSRAM sensors, BOOT/heartbeat logs),
 │                                          #   globals, on_boot
 ├── ha_template_sensors.yaml               # Home Assistant-side template sensors defining
 │                                          #   4 station presets (Name + URL, radio_browser)
@@ -174,6 +179,13 @@ esp-web-radio/
 │   ├── display-fonts.yaml                 # Font strategy: Roboto gfonts, Cyrillic coverage,
 │   │                                      #   MDI extras, text_* icon substitutions
 │   └── common-colors.yaml                 # Named color: entities (ESPHome `color:` ids)
+│
+├── custom_components/
+│   └── spectrum_tap/                      # Custom speaker passthrough (plans/visualizer.md):
+│                                          #   taps PCM between the mixer and the I2S DAC,
+│                                          #   128-pt FFT -> 16 bands -> LVGL visualizer
+│                                          #   (loaded via external_components in the main
+│                                          #   config)
 │
 ├── tests/
 │   └── yaml_syntax_check.py               # YAML syntax check helper for the config files
@@ -271,11 +283,12 @@ Three swipeable pages (480×320 landscape, LVGL `rotation: 90`), declared under 
 
 #### Info/Settings page (`page_settings`)
 
-[`packages/esp-web-radio-page_settings.yaml`](packages/esp-web-radio-page_settings.yaml) defines `page_settings`, the third swipeable page (reached by a left swipe from Stations; wraps to Now Playing). Fixed 3-row info layout ending at y=214 (above the bottom nav bar at y=294); static-layout contract (hide/show only):
+[`packages/esp-web-radio-page_settings.yaml`](packages/esp-web-radio-page_settings.yaml) defines `page_settings`, the third swipeable page (reached by a left swipe from Stations; wraps to Now Playing). Fixed 4-row info layout ending at y=270 (still above the bottom nav bar at y=294); static-layout contract (hide/show only):
 
 - **WiFi signal** — a `wifi_signal` sensor (ESPHome `platform: wifi_signal`, re-added to [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-homeassistant.yaml)) feeds the `refresh_settings_info` script, which picks the signal-strength glyph by threshold (`wifi_100` ≥ −50 dBm, `wifi_75` ≥ −65 dBm, `wifi_50` ≥ −78 dBm, else `wifi_25`) and shows the numeric dBm label. Because the sensor measures the ESP32's own radio, the row works identically in HA-connected and wifi-only modes; while disconnected the icon dims to the lowest bar and the dBm label hides.
 - **Uptime** — the `uptime` sensor (re-added) drives the `uptime_human` template text sensor (re-added), formatted `Xd Xh Xm` / `Xh Xm` / `Xm`; the label updates every 60 s via `refresh_settings_info`.
 - **Startup volume** — the `startup_volume` global is captured in `on_boot` (in [`esp-web-radio.yaml`](esp-web-radio.yaml)) immediately after `sync_volume_ui` reads the component-restored volume (component restore happens during setup, before `on_boot`); the row displays it as a percentage.
+- **Last reset reason** — the `reset_reason` text sensor of the `debug` component ([`esp-web-radio.yaml`](esp-web-radio.yaml)) feeds the row via `refresh_settings_info`; the reason is reported by hardware/RTC and **survives software reboots**, so after a spontaneous restart this row names what ended the previous session (power-on, software, watchdog, brown-out…). The whole row starts hidden and appears only while the sensor has a state (hide-only, no reflow). Diagnosing restarts: [`plans/troubleshooting-restarts.md`](plans/troubleshooting-restarts.md).
 - **Idle/inactivity behavior** (no settings row — behavior, not data): the volume popup auto-dismisses after 5 s of inactivity (`show_volume_popup`, `mode: restart`) and waking the device from global idle (LVGL `on_idle` sleep) returns to Now Playing — implemented inside the native `touchscreen.on_release` wake handler ([`packages/esp-web-radio-hardware.yaml`](packages/esp-web-radio-hardware.yaml)) that performs `lvgl.resume`, without extra timer scripts.
 
 The page title uses the cogs glyph (`text_nav_settings`) and all icons come from glyphs already embedded in `menu24` — no new font entries, no flash cost.
@@ -289,6 +302,38 @@ The page title uses the cogs glyph (`text_nav_settings`) and all icons come from
 - While it is up, the `wifi_status` label blinks the `wifi-cog` glyph at ~400 ms (`blink_wifi_status` script; icon set via `lvgl.label.update` in `enter_ap_mode`).
 - Idle/sleep is disabled while `wifi.ap_active` (the `on_idle` handler is guarded), so the QR/SSID/password stay readable for as long as the setup page is needed.
 - Clears automatically when the station reconnects — `exit_ap_mode` restores the plain `wifi` glyph, returns to `${homepage}` (Now Playing), and `wifi_status` settles back to its steady state.
+
+#### Audio visualizer (spectrum_tap)
+
+Implemented per [`plans/visualizer.md`](plans/visualizer.md): a custom speaker
+component (`custom_components/spectrum_tap`, loaded via `external_components`)
+is inserted between the mixer and the I2S DAC (the plan's single-line change in
+[`packages/esp-web-radio-audio.yaml`](packages/esp-web-radio-audio.yaml)) and
+transparently forwards every PCM frame while feeding a 128-point radix-2 FFT
+(Hann window, 16 logarithmic bands over ~375 Hz–18 kHz, band tables pre-computed
+for the 48 kHz stereo stream):
+
+```
+media_player → resampler → mixer → spectrum_tap → i2s_speaker → I2S → PCM5102A
+                                         ↓
+                                   spec_bands[0..15] → 16 LVGL bars
+```
+
+- **Bars** — 16 `viz_bar_0..15` objects are declared as children of the fixed
+  `mp_visualizer` strip (static-layout contract: hiding the strip hides them,
+  nothing reflows).
+- **Driver** — the `viz_animation` interval (40 ms = 25 fps) reads
+  `spec_bands[]` and animates heights bottom-anchored with attack/decay
+  smoothing (fast rise — 50/50 blend, slow fall — ×0.85, GAIN 300 — the plan's
+  exact tuning). It runs only while `mp_visualizer` is visible (= playing, per
+  the `on_play`/`on_pause`/`on_idle` triggers in
+  [`packages/esp-web-radio-audio.yaml`](packages/esp-web-radio-audio.yaml)) and
+  LVGL is not paused; the FFT itself runs only while PCM flows through the tap,
+  so idle/paused costs nothing.
+- **Both pipelines** (media + announcements) are mixed before the tap point, so
+  TTS interruptions animate the visualizer too.
+- **Custom component internals, build-time checks and estimated memory/CPU
+  impact:** see [`plans/completed_visualizer.md`](plans/completed_visualizer.md).
 
 #### Bottom nav indicator (`top_layer`)
 
@@ -311,7 +356,7 @@ Driven by [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-h
 | `mp_lnow_playing_track` | label | `now_playing_track` sensor, `media_title` attribute | HA → UI (hidden when empty) |
 | `mp_station_logo` | obj (panel) | — (hidden; station-picture source pending roadmap item 4) | — |
 | `mp_now_playing_art` | obj (panel) | `now_playing_art` sensor, `media_image_url` attribute | HA → UI (shown while metadata exists) |
-| `mp_visualizer` | obj (panel) | `media_player.on_play` / `on_pause` / `on_idle` — shown only while `player_playing` | native → UI |
+| `mp_visualizer` | obj (panel + 16 bar children `viz_bar_0..15`) | `media_player.on_play` / `on_pause` / `on_idle` — shown only while playing; bar heights driven by the `viz_animation` interval from `spectrum_tap` FFT bands (`spec_bands[]`) | native → UI |
 | `mp_bar_progress` | bar | `player_position` / `player_duration` (percent, clamped 0–100); hidden until a duration is known, re-hidden on `on_idle` | HA → UI |
 | `mp_lbl_elapsed` | label | `player_position` (`mm:ss`); hidden until a position is known (0 at track start is valid and shows), re-hidden on `on_idle` | HA → UI |
 | `mp_lbl_total` | label | `player_duration` (`mm:ss`); hidden until a duration is known, re-hidden on `on_idle` | HA → UI |
@@ -323,6 +368,7 @@ Driven by [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-h
 | `settings_lbl_rssi` | label | `wifi_signal` ("−NN dBm"); hidden while disconnected | native → UI |
 | `settings_lbl_uptime` | label | `uptime_human` text sensor (`Xd Xh Xm`) via `refresh_settings_info` | native → UI |
 | `settings_lbl_startup_vol` | label | `startup_volume` global (captured in `on_boot` after `sync_volume_ui`) via `refresh_settings_info` | native → UI |
+| `settings_lbl_reset_reason` | label | `reset_reason` debug text sensor (last reset reason) via `refresh_settings_info`; row `settings_row_reset` shown only while the sensor has a state | native → UI |
 | `mp_btn_play` | button | toggles play/pause via HA when connected (`player_playing` decides which); ignored offline | UI → HA |
 | `mp_btn_prev` | button | previous station (wrap `${station_count}` → 1) via `play_station` | UI → playback |
 | `mp_btn_next` | button | next station (wrap 1 → `${station_count}`) via `play_station` | UI → playback |
@@ -382,13 +428,43 @@ Connectivity flags (both `bool` globals in [`packages/esp-web-radio-lvgl_ui.yaml
 
 ---
 
+## Diagnostics & troubleshooting
+
+Added for the TODO item "add logs to troubleshoot spontaneous device restarts" — full investigation, documented capabilities table, signal cheat-sheet, reproduction workflow and mitigation knobs live in [`plans/troubleshooting-restarts.md`](plans/troubleshooting-restarts.md). Short version:
+
+### Instrumentation (in [`esp-web-radio.yaml`](esp-web-radio.yaml))
+
+- **`debug` component** (`update_interval: 60s`) publishing HA entities: `Reset Reason` (text sensor, survives software reboots), `Heap Free`, `Heap Min Free` (lowest free heap since boot — leak/peak detection), `Heap Max Block`, `Heap Fragmentation` (> ~50 % is the allocation-failure danger zone), `Free PSRAM`, `Loop Time` (longest main-loop iteration — blocking-render detection).
+- **Boot summary** — the first `on_boot` action logs `[diag] BOOT reset_reason=… uptime=… s heap_free=… psram_free=…`; after a spontaneous restart this line names the reason of the crashed session.
+- **Heartbeat** — `interval: heartbeat_diag` every **15 min** logs one `[diag] HEARTBEAT uptime=… heap_free=… heap_min_free=… frag=…% psram_free=… loop_time=…` INFO line, so a captured serial log shows the memory trend up to the crash.
+
+### Logger tuning (documented)
+
+- Steady state stays `DEBUG` (the default; cheap on modern ESPHome). `baud_rate: 115200` explicit.
+- On the ESP32-S3 the logger default transport is `USB_SERIAL_JTAG` (native USB, GPIO19/20) — the same path used for the captured logs in the git-ignored `logs/` directory.
+- **`VERBOSE` is the reproduction mode only**: it surfaces IDF panic/backtrace/allocation detail but slows the device and can destabilize audio/LVGL timing — switch it in, reproduce, capture, switch back.
+
+### Reading the signals (fast triage)
+
+| After a spontaneous restart you see | Likely cause | Next step |
+|---|---|---|
+| Next-boot `reset_reason` = `POWERON_RESET` | clean power cycle or true power loss | check PSU/logs for brownout |
+| `RTCWDT_BROWN_OUT_RESET` | brown-out (power dip, usually silent) | PSU/wiring |
+| `TASK_WDT` / `TG0/TG1WDT_SYS_RESET` / `RTCWDT_SYS_RESET` / `RTCWDT_CPU_RESET` | watchdog reset | find the stalled task in the pre-crash TWDT message |
+| `SW_SYS_RESET` / `SW_CPU_RESET` | software restart — typically after a panic handler | decode the backtrace in the preceding log |
+| `Guru Meditation Error` + backtrace | CPU exception | `addr2line` the top addresses against the flashed ELF |
+
+Heap exhaustion instead leaves allocation-failure logs and a decaying `heap_min_free`/`psram_free` trend across heartbeats; mitigation knobs (all documented): lower `media_player.buffer_size` (default 1,000,000 B per pipeline), `task_stack_in_psram: true`, or `network.enable_high_performance: false` if the docs' OOM note applies.
+
+---
+
 ## Font strategy
 
 Centralized in [`packages/display-fonts.yaml`](packages/display-fonts.yaml).
 
 - **Cyrillic + Latin coverage** — station names can contain Cyrillic (e.g. "Радио Дача"), so every text font includes the Cyrillic alphabet alongside ASCII (explicit glyph strings including `Ёё«»—–°`). The icon-only fonts `menu32` / `nav20` keep a minimal base set (space glyph only) to limit flash usage.
 - **Google Fonts** — fonts are loaded from `gfonts://Roboto` (no local font files needed for text).
-- **MDI webfont extras** — UI icons come from `fonts/materialdesignicons-webfont.ttf`, embedded via font `extras` (18 glyphs in `menu24`, 7 in `menu32`, 3 in `nav20`). Each icon is exposed as a `text_*` / `wifi_*` substitution so pages reference readable names instead of raw code points.
+- **MDI webfont extras** — UI icons come from `fonts/materialdesignicons-webfont.ttf`, embedded via font `extras` (12 glyphs in `menu24` incl. the new `mdi-restart`, 7 in `menu32`, 3 in `nav20`). Each icon is exposed as a `text_*` / `wifi_*` substitution so pages reference readable names instead of raw code points.
 
 | Font id | Size | Used for |
 |---|---|---|
@@ -400,7 +476,7 @@ Centralized in [`packages/display-fonts.yaml`](packages/display-fonts.yaml).
 | `f_body` | 17 px | Body text, time labels, LVGL `default_font` (`${font_body}`) |
 | `f_small` | 13 px | Small/muted labels (`${font_small}`) |
 
-Icon substitutions defined: `text_hastatus` (mdi-home-assistant), `text_nav_playing` (mdi-play-circle-outline), `text_nav_settings` (mdi-cogs), `text_nav_stations` (mdi-radio), `wifi_25/50/75/100` (mdi-wifi-strength-1..4), `text_wifi` (mdi-wifi), `text_wifi_cog` (mdi-wifi-cog), `text_play`, `text_pause`, `text_skip_prev`, `text_skip_next`, `text_volume_high`, `text_volume_plus`, `text_volume_minus`, `text_volume_off`.
+Icon substitutions defined: `text_hastatus` (mdi-home-assistant), `text_nav_playing` (mdi-play-circle-outline), `text_nav_settings` (mdi-cogs), `text_nav_stations` (mdi-radio), `wifi_25/50/75/100` (mdi-wifi-strength-1..4), `text_wifi` (mdi-wifi), `text_wifi_cog` (mdi-wifi-cog), `text_play`, `text_pause`, `text_skip_prev`, `text_skip_next`, `text_volume_high`, `text_volume_plus`, `text_volume_minus`, `text_volume_off`, `text_restart` (mdi-restart).
 
 ---
 
@@ -418,6 +494,7 @@ Tracked in [`TODO.md`](TODO.md).
 - **Use styles/substitutions, not raw hex** — reference `${color_*}` substitutions and named `style_definitions` instead of hard-coding colors on widgets.
 - **Adding icons** — when introducing a new MDI glyph, add it to **both** the font `extras` list in [`packages/display-fonts.yaml`](packages/display-fonts.yaml) and a `text_*` substitution; then reference the substitution from the UI.
 - **Designer re-imports** — the Designer export in [`designer/`](designer) is archived reference only; the build reads [`packages/esp-web-radio-page_now_playing.yaml`](packages/esp-web-radio-page_now_playing.yaml). Keep the port and the archive in sync manually.
+- **Custom components** — local components live in `custom_components/` and are loaded explicitly via `external_components:` in the main config (currently `spectrum_tap`). When updating, keep the folder in sync with the source archive `plans/spectrum_tap.zip`.
 
 ## LICENSE
 MDI WebFonts: Apache 2.0

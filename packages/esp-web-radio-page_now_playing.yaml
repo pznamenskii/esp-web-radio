@@ -140,6 +140,223 @@ lvgl:
                   # Imp 4: shown only while playing (driven by the media_player
                   # on_play/on_pause/on_idle triggers in esp-web-radio-audio.yaml)
                   hidden: true
+                  # Audio visualizer bars (plans/visualizer.md): 16 fixed slots
+                  # absolutely positioned inside this strip (static-layout
+                  # contract - hiding the parent hides the children, nothing
+                  # reflows). Heights are animated by the `viz_animation`
+                  # interval at the bottom of this file, driven by the
+                  # spectrum_tap FFT bands (custom_components/spectrum_tap).
+                  # Geometry: strip 472x75; bar w=22, pitch=28, x0=15 -> right
+                  # margin 15; y/height set at runtime (bottom-anchored).
+                  widgets:
+                    - obj:
+                        id: viz_bar_0
+                        x: 15
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_1
+                        x: 43
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_2
+                        x: 71
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_3
+                        x: 99
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_4
+                        x: 127
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_5
+                        x: 155
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_6
+                        x: 183
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_7
+                        x: 211
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_8
+                        x: 239
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_9
+                        x: 267
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_10
+                        x: 295
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_11
+                        x: 323
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_12
+                        x: 351
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_13
+                        x: 379
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_14
+                        x: 407
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                    - obj:
+                        id: viz_bar_15
+                        x: 435
+                        y: 72
+                        width: 22
+                        height: 2
+                        bg_color: ${color_accent}
+                        bg_opa: 85%
+                        radius: 2
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
               - label:
                   id: mp_station_title
                   styles: text_title
@@ -477,3 +694,77 @@ lvgl:
                         long_mode: CLIP
                         text_font: ${font_body}
                         text_color: ${color_text_primary}
+
+# ---------------------------------------------------------------------------
+# Visualizer animation driver (plans/visualizer.md): the spectrum_tap custom
+# speaker (esp-web-radio-audio.yaml) taps the mixed PCM in play(), computes a
+# 128-point FFT in its loop() and publishes 16 power bands in spec_bands[]
+# (custom_components/spectrum_tap/spectrum.cpp). This interval samples those
+# bands at 25 fps (40 ms) and animates the 16 mp_visualizer bars with
+# attack/decay smoothing - fast rise, slow fall, same tuning as the plan
+# (GAIN 300.0f, attack 0.5, decay 0.85).
+#
+# Integration with the existing show/hide triggers: the guard is simply the
+# widget visibility itself - on_play shows mp_visualizer, on_pause/on_idle
+# hide it (esp-web-radio-audio.yaml), so while the strip is hidden this
+# interval does no work (one lv_obj_has_flag check per tick). The FFT itself
+# only runs while play() flows, i.e. while audio is actually playing - when
+# paused/idle no new bands are produced and no bar updates happen. LVGL is
+# skipped while the idle snow screen is up (lvgl.is_paused).
+# ---------------------------------------------------------------------------
+interval:
+  - id: viz_animation
+    interval: 40ms
+    then:
+      - if:
+          condition:
+            and:
+              - lambda: 'return !lv_obj_has_flag(id(mp_visualizer), LV_OBJ_FLAG_HIDDEN);'
+              - not:
+                  - lvgl.is_paused
+          then:
+            - lambda: |-
+                // FFT output of custom_components/spectrum_tap (spectrum.cpp):
+                // 16 logarithmic bands covering ~375 Hz - 18 kHz (48 kHz /
+                // 128-point FFT), power-domain magnitude. Global symbol
+                // defined in spectrum.cpp; declared here for the lambda TU.
+                extern float spec_bands[16];
+
+                // Resolve the 16 YAML-declared bar objects once (ids are
+                // generated member expressions - they must not be re-evaluated
+                // through a nested capture, hence the static array).
+                static lv_obj_t *viz_bars[16] = {nullptr};
+                if (viz_bars[0] == nullptr) {
+                  viz_bars[0] = id(viz_bar_0);
+                  viz_bars[1] = id(viz_bar_1);
+                  viz_bars[2] = id(viz_bar_2);
+                  viz_bars[3] = id(viz_bar_3);
+                  viz_bars[4] = id(viz_bar_4);
+                  viz_bars[5] = id(viz_bar_5);
+                  viz_bars[6] = id(viz_bar_6);
+                  viz_bars[7] = id(viz_bar_7);
+                  viz_bars[8] = id(viz_bar_8);
+                  viz_bars[9] = id(viz_bar_9);
+                  viz_bars[10] = id(viz_bar_10);
+                  viz_bars[11] = id(viz_bar_11);
+                  viz_bars[12] = id(viz_bar_12);
+                  viz_bars[13] = id(viz_bar_13);
+                  viz_bars[14] = id(viz_bar_14);
+                  viz_bars[15] = id(viz_bar_15);
+                }
+
+                // Per-band attack/decay smoothing (fast rise, slow fall).
+                static float viz_smooth[16] = {0.0f};
+                for (int b = 0; b < 16; b++) {
+                  float target = sqrtf(spec_bands[b]) * 300.0f;
+                  if (target > viz_smooth[b])
+                    viz_smooth[b] = viz_smooth[b] * 0.5f + target * 0.5f;
+                  else
+                    viz_smooth[b] = viz_smooth[b] * 0.85f;
+                  int h = (int) viz_smooth[b];
+                  if (h < 2) h = 2;
+                  if (h > 70) h = 70;   // strip is 75 px tall, 3 px top pad
+                  // Bottom-anchored: fixed x (15 + b*28), y grows upward.
+                  lv_obj_set_pos(viz_bars[b], 15 + b * 28, 75 - h - 3);
+                  lv_obj_set_height(viz_bars[b], h);
+                }
