@@ -367,7 +367,7 @@ sensor:
 
   # Uptime in seconds - source for the uptime_human text sensor above.
   - platform: uptime
-    id: uptime
+    id: uptime_sec
     name: "Uptime"
     update_interval: 60s
 
