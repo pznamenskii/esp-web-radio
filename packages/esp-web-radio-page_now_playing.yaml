@@ -562,9 +562,9 @@ lvgl:
                               condition:
                                 lambda: 'return id(volume_muted);'
                               then:
-                                - media_player.volume_mute:
-                                    id: esp_media_player
-                                    state: OFF
+                                - media_player.unmute: esp_media_player
+                              else:
+                                - media_player.mute: esp_media_player
                           - media_player.volume_down:
                               id: esp_media_player
                           - script.execute: show_volume_popup
