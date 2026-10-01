@@ -13,6 +13,12 @@
 #     after `sync_volume_ui` reads the component-restored volume
 #     (esp-web-radio.yaml); component restore happens during setup (before
 #     on_boot), so the read is already the persisted boot value.
+#   - Last reset reason: `debug.reset_reason` text sensor (esp-web-radio.yaml,
+#     plans/troubleshooting-restarts.md) - power-on / software / watchdog /
+#     brownout etc. The reason SURVIVES software reboots (hardware/RTC
+#     register), so after a spontaneous restart the row shows what ended the
+#     previous session. Row is hidden while the sensor is unknown (hide-only,
+#     no reflow).
 #   - Idle/inactivity behavior (no settings row - it is behavior, not data):
 #     the volume popup already auto-dismisses after 5 s of inactivity
 #     (`show_volume_popup`, mode: restart, page_now_playing.yaml), and waking
@@ -20,7 +26,7 @@
 #     - implemented in the native `touchscreen.on_release` wake handler in
 #     esp-web-radio-hardware.yaml (no extra timer scripts, per project review).
 #
-# Geometry: 3 fixed info rows (48 px tall, 56 px pitch) ending at y=214, well
+# Geometry: 4 fixed info rows (48 px tall, 56 px pitch) ending at y=270, still
 # above the bottom nav bar (top edge y=294). Static-layout contract: hide/show
 # only, fixed positions - no reflow.
 # ==============================================================================
@@ -37,10 +43,12 @@ globals:
 
 script:
   # ---------------------------------------------------------------------------
-  # Single writer for the three live info rows (startup volume, uptime, WiFi
-  # signal). Called from: on_boot (seeds the page before it can be shown),
-  # wifi_signal / uptime_human on_value (esp-web-radio-homeassistant.yaml) and
-  # wifi.on_connect / on_disconnect (esp-web-radio-lvgl_ui.yaml).
+  # Single writer for the live info rows (startup volume, uptime, WiFi signal,
+  # last reset reason). Called from: on_boot (seeds the page before it can be
+  # shown), wifi_signal / uptime_human on_value
+  # (esp-web-radio-homeassistant.yaml), reset_reason on_value
+  # (esp-web-radio.yaml) and wifi.on_connect / on_disconnect
+  # (esp-web-radio-lvgl_ui.yaml).
   # RSSI -> icon thresholds: >= -50 dBm = wifi_100, >= -65 = wifi_75,
   # >= -78 = wifi_50, else wifi_25. WiFi down: lowest bar, muted, dBm hidden.
   # ---------------------------------------------------------------------------
@@ -84,6 +92,19 @@ script:
                 text: "${wifi_25}"
             - lambda: 'lv_obj_set_style_text_color(id(settings_lbl_wifi_icon), lv_color_hex(${color_text_muted}), 0);'
             - lvgl.widget.hide: settings_lbl_rssi
+      # Reset reason row: shown while the debug reset_reason sensor has a state
+      # (the reason of the LAST boot - survives software reboots). The row is
+      # hidden when the sensor is unknown; hide/show only, no reflow.
+      - if:
+          condition:
+            lambda: 'return id(reset_reason).has_state();'
+          then:
+            - lvgl.widget.show: settings_row_reset
+            - lvgl.label.update:
+                id: settings_lbl_reset_reason
+                text: !lambda 'return id(reset_reason).state.c_str();'
+          else:
+            - lvgl.widget.hide: settings_row_reset
 
 lvgl:
   pages:
@@ -218,4 +239,43 @@ lvgl:
                   width: 152
                   height: 48
                   text: "50%"
+                  text_align: RIGHT
+        # ── Row 4: last reset reason (debug.reset_reason; hidden while unknown) ──
+        - obj:
+            id: settings_row_reset
+            styles: station_button
+            hidden: true
+            x: 16
+            y: 222
+            width: 448
+            height: 48
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: settings_lbl_reset_icon
+                  x: 14
+                  y: 8
+                  width: 32
+                  height: 32
+                  text: "${text_restart}"
+                  text_font: menu24
+                  text_color: ${color_accent}
+              - label:
+                  id: settings_lbl_reset_caption
+                  styles: text_body
+                  x: 54
+                  y: 0
+                  width: 150
+                  height: 48
+                  text: "Причина сброса"
+                  text_align: LEFT
+              - label:
+                  id: settings_lbl_reset_reason
+                  styles: text_body
+                  x: 210
+                  y: 0
+                  width: 222
+                  height: 48
+                  text: "—"
                   text_align: RIGHT

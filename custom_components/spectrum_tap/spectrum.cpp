@@ -1,0 +1,136 @@
+#include "spectrum.h"
+
+// ── Core 0 side: lightweight sample capture ──
+// Double-buffered: Core 0 writes to buf[write_buf_], flips when full.
+// Core 1 reads buf[1 - write_buf_] (the completed buffer).
+static float sample_bufs[2][FFT_N];
+static volatile int write_buf_ = 0;
+static volatile int accum_idx = 0;
+static volatile bool sample_ready = false;
+static volatile bool spectrum_ready = false;
+
+// ── Core 1 side: FFT computation ──
+static float fft_input[FFT_N * 2];    // interleaved Re/Im
+static float fft_window[FFT_N];       // pre-computed Hann window
+static float fft_twiddle[FFT_N];      // pre-computed twiddle factors (cos)
+static float fft_twiddle_s[FFT_N];    // pre-computed twiddle factors (sin)
+
+// Output bands: written by Core 1 in spectrum_compute(), read by Core 1 draw
+float spec_bands[VIZ_BANDS] = {0};
+
+// Logarithmic bin mapping for 48000 Hz sample rate.
+// 128-point FFT at 48000 Hz -> 375 Hz/bin.
+// Maps bins 1-48 (~375 Hz - 18 kHz).
+static const uint8_t band_bin_start[VIZ_BANDS] = {
+    1,  2,  3,  4,  5,  6,  7,  9, 11, 13, 16, 20, 24, 29, 35, 41
+};
+static const uint8_t band_bin_end[VIZ_BANDS] = {
+    1,  2,  3,  4,  5,  6,  8, 10, 12, 15, 19, 23, 28, 34, 40, 48
+};
+
+// In-place radix-2 decimation-in-time FFT on interleaved Re/Im float array.
+static void fft_radix2(float *data, int n) {
+    // Bit-reversal permutation
+    for (int i = 1, j = 0; i < n; i++) {
+        int bit = n >> 1;
+        for (; j & bit; bit >>= 1)
+            j ^= bit;
+        j ^= bit;
+        if (i < j) {
+            float tr = data[i * 2];
+            float ti = data[i * 2 + 1];
+            data[i * 2] = data[j * 2];
+            data[i * 2 + 1] = data[j * 2 + 1];
+            data[j * 2] = tr;
+            data[j * 2 + 1] = ti;
+        }
+    }
+
+    // Butterfly stages
+    for (int len = 2; len <= n; len <<= 1) {
+        int half = len >> 1;
+        int step = n / len;
+        for (int i = 0; i < n; i += len) {
+            for (int j = 0; j < half; j++) {
+                int tw = j * step;
+                float wr = fft_twiddle[tw];
+                float wi = fft_twiddle_s[tw];
+                int e = (i + j) * 2;
+                int o = (i + j + half) * 2;
+                float tr = data[o] * wr - data[o + 1] * wi;
+                float ti = data[o] * wi + data[o + 1] * wr;
+                data[o] = data[e] - tr;
+                data[o + 1] = data[e + 1] - ti;
+                data[e] += tr;
+                data[e + 1] += ti;
+            }
+        }
+    }
+}
+
+// Call once before audio starts — pre-compute Hann window and twiddle factors.
+void spectrum_init() {
+    for (int i = 0; i < FFT_N; i++) {
+        fft_window[i] = 0.5f * (1.0f - cosf(2.0f * (float) M_PI * i / (FFT_N - 1)));
+        float angle = -2.0f * (float) M_PI * i / FFT_N;
+        fft_twiddle[i] = cosf(angle);
+        fft_twiddle_s[i] = sinf(angle);
+    }
+    spectrum_ready = true;
+}
+
+// Called from Core 1 (loop) — runs FFT on latest completed sample buffer.
+// Returns true if new data was computed.
+bool spectrum_compute() {
+    if (!sample_ready)
+        return false;
+    sample_ready = false;
+
+    // Read the completed buffer (the one Core 0 is NOT writing to)
+    int read_buf = 1 - write_buf_;
+    for (int i = 0; i < FFT_N; i++) {
+        fft_input[i * 2] = sample_bufs[read_buf][i] * fft_window[i];
+        fft_input[i * 2 + 1] = 0.0f;
+    }
+
+    fft_radix2(fft_input, FFT_N);
+
+    // Aggregate FFT bins into 16 logarithmic frequency bands (magnitude squared)
+    for (int b = 0; b < VIZ_BANDS; b++) {
+        float sum = 0.0f;
+        for (int i = band_bin_start[b]; i <= band_bin_end[b]; i++) {
+            float re = fft_input[i * 2];
+            float im = fft_input[i * 2 + 1];
+            sum += re * re + im * im;
+        }
+        int bin_count = band_bin_end[b] - band_bin_start[b] + 1;
+        spec_bands[b] = sum / (float) bin_count;
+    }
+    return true;
+}
+
+// Called from PCM output callback (Core 0) — lightweight sample capture.
+// Mixes stereo 16-bit PCM to mono, fills double-buffered accumulator.
+// Expects 16-bit stereo: 4 bytes per frame (2 bytes L + 2 bytes R).
+void feed_fft_samples(const uint8_t *data, int size) {
+    if (!spectrum_ready)
+        return;
+
+    const int16_t *samples = reinterpret_cast<const int16_t *>(data);
+    int num_frames = size / 4; // 16-bit stereo = 4 bytes per frame
+
+    int wb = write_buf_;
+    for (int i = 0; i < num_frames; i++) {
+        // Mix stereo to mono (average left + right), normalize to [-1, 1]
+        float mono = (float) (samples[i * 2] + samples[i * 2 + 1]) * (0.5f / 32768.0f);
+        sample_bufs[wb][accum_idx] = mono;
+        accum_idx++;
+        if (accum_idx >= FFT_N) {
+            accum_idx = 0;
+            // Flip buffer BEFORE signaling ready
+            write_buf_ = 1 - wb;
+            wb = write_buf_;
+            sample_ready = true;
+        }
+    }
+}
