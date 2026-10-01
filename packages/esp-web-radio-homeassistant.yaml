@@ -269,8 +269,9 @@ text_sensor:
     name: "Media Player State"
     id: media_player_state
 
-  # Human-readable uptime for the Info/Settings page (driven by the `uptime`
-  # sensor; also published to HA). Updates every 60 s; format: Xd Xh Xm /
+  # Human-readable uptime for the Info/Settings page (driven by the
+  # `uptime_sec` sensor; also published to HA). Updates every 60 s; format:
+  # Xd Xh Xm /
   # Xh Xm / Xm. Re-added from the pre-cleanup state (comment cleanup removed
   # it while no Settings page existed - it targeted settings_uptime_value).
   - platform: template
@@ -278,7 +279,7 @@ text_sensor:
     name: "Uptime Human"
     update_interval: 60s
     lambda: |-
-      int seconds = (int) id(uptime).state;
+      int seconds = (int) id(uptime_sec).state;
       int days = seconds / 86400;
       int hours = (seconds % 86400) / 3600;
       int minutes = (seconds % 3600) / 60;

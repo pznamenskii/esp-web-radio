@@ -7,7 +7,7 @@
 #     thresholds) + numeric dBm label. Source: the LOCAL `wifi_level` sensor
 #     (re-added in esp-web-radio-homeassistant.yaml) - the ESP32 radio measures
 #     itself, so it works in wifi_only/no-HA mode too (no HA entity needed).
-#   - Uptime: `uptime` + `uptime_human` (days/hours/minutes), re-added in
+#   - Uptime: `uptime_sec` + `uptime_human` (days/hours/minutes), re-added in
 #     esp-web-radio-homeassistant.yaml.
 #   - Startup volume (INTERACTIVE): a PERSISTED `startup_volume` global
 #     (restore_value: true), shown as a percentage. Tapping the row opens the
@@ -108,7 +108,7 @@ script:
             - lvgl.label.update:
                 id: settings_lbl_wifi_icon
                 text: !lambda |-
-                  float rssi = id(wifi_signal).state;
+                  float rssi = id(wifi_level).state;
                   if (rssi >= -50.0f) return "${wifi_100}";
                   if (rssi >= -65.0f) return "${wifi_75}";
                   if (rssi >= -78.0f) return "${wifi_50}";
@@ -118,7 +118,7 @@ script:
                 id: settings_lbl_rssi
                 text: !lambda |-
                   char buf[16];
-                  snprintf(buf, sizeof(buf), "%.0f dBm", id(wifi_signal).state);
+                  snprintf(buf, sizeof(buf), "%.0f dBm", id(wifi_level).state);
                   return buf;
             - lvgl.widget.show: settings_lbl_rssi
           else:

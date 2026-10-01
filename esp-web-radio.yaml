@@ -27,7 +27,7 @@ esphome:
         format: "BOOT reset_reason=%s uptime=%d s heap_free=%.0f B psram_free=%.0f B"
         args:
           - 'id(reset_reason).has_state() ? id(reset_reason).state.c_str() : "unknown"'
-          - 'id(uptime).has_state() ? (int) id(uptime).state : -1'
+          - 'id(uptime_sec).has_state() ? (int) id(uptime_sec).state : -1'
           - 'id(heap_free).has_state() ? id(heap_free).state : -1.0f'
           - 'id(psram_free).has_state() ? id(psram_free).state : -1.0f'
     - lvgl.page.show: page_now_playing
@@ -228,7 +228,7 @@ interval:
           tag: diag
           format: "HEARTBEAT uptime=%d s heap_free=%.0f B heap_min_free=%.0f B frag=%.1f pct psram_free=%.0f B loop_time=%.0f"
           args:
-            - 'id(uptime).has_state() ? (int) id(uptime).state : -1'
+            - 'id(uptime_sec).has_state() ? (int) id(uptime_sec).state : -1'
             - 'id(heap_free).has_state() ? id(heap_free).state : -1.0f'
             - 'id(heap_min_free).has_state() ? id(heap_min_free).state : -1.0f'
             - 'id(heap_fragmentation).has_state() ? id(heap_fragmentation).state : -1.0f'
