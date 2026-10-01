@@ -699,10 +699,10 @@ lvgl:
 # Visualizer animation driver (plans/visualizer.md): the spectrum_tap custom
 # speaker (esp-web-radio-audio.yaml) taps the mixed PCM in play(), computes a
 # 128-point FFT in its loop() and publishes 16 power bands in spec_bands[]
-# (custom_components/spectrum_tap/spectrum.cpp). This interval samples those
-# bands at 25 fps (40 ms) and animates the 16 mp_visualizer bars with
-# attack/decay smoothing - fast rise, slow fall, same tuning as the plan
-# (GAIN 300.0f, attack 0.5, decay 0.85).
+# (custom_components/spectrum_tap/spectrum.cpp). The animation logic lives in
+# the spectrum_viz custom component (custom_components/spectrum_viz) - all
+# per-frame state (attack/decay smoothing, bar pointers) is C++ members, so
+# this interval only calls tick() at 25 fps (40 ms).
 #
 # Integration with the existing show/hide triggers: the guards are the
 # `visualizer_enabled` toggle (Info/Settings page persisted global) AND the
@@ -714,6 +714,28 @@ lvgl:
 # updates happen. LVGL is skipped while the idle snow screen is up
 # (lvgl.is_paused).
 # ---------------------------------------------------------------------------
+spectrum_viz:
+  id: spectrum_viz
+  # 16 bar widgets from the mp_visualizer strip below (geometry: strip
+  # 472x75; bar w=22, pitch=28, x0=15). Bound lazily by the component on
+  # first tick, so no ordering constraints against LVGL init.
+  bars:
+    - viz_bar_0
+    - viz_bar_1
+    - viz_bar_2
+    - viz_bar_3
+    - viz_bar_4
+    - viz_bar_5
+    - viz_bar_6
+    - viz_bar_7
+    - viz_bar_8
+    - viz_bar_9
+    - viz_bar_10
+    - viz_bar_11
+    - viz_bar_12
+    - viz_bar_13
+    - viz_bar_14
+    - viz_bar_15
 interval:
   - id: viz_animation
     interval: 40ms
@@ -725,48 +747,4 @@ interval:
               - not:
                   - lvgl.is_paused
           then:
-            - lambda: |-
-                // FFT output of custom_components/spectrum_tap (spectrum.cpp):
-                // 16 logarithmic bands covering ~375 Hz - 18 kHz (48 kHz /
-                // 128-point FFT), power-domain magnitude. Global symbol
-                // defined in spectrum.cpp; declared here for the lambda TU.
-                extern float spec_bands[16];
-
-                // Resolve the 16 YAML-declared bar objects once (ids are
-                // generated member expressions - they must not be re-evaluated
-                // through a nested capture, hence the static array).
-                static lv_obj_t *viz_bars[16] = {nullptr};
-                if (viz_bars[0] == nullptr) {
-                  viz_bars[0] = id(viz_bar_0);
-                  viz_bars[1] = id(viz_bar_1);
-                  viz_bars[2] = id(viz_bar_2);
-                  viz_bars[3] = id(viz_bar_3);
-                  viz_bars[4] = id(viz_bar_4);
-                  viz_bars[5] = id(viz_bar_5);
-                  viz_bars[6] = id(viz_bar_6);
-                  viz_bars[7] = id(viz_bar_7);
-                  viz_bars[8] = id(viz_bar_8);
-                  viz_bars[9] = id(viz_bar_9);
-                  viz_bars[10] = id(viz_bar_10);
-                  viz_bars[11] = id(viz_bar_11);
-                  viz_bars[12] = id(viz_bar_12);
-                  viz_bars[13] = id(viz_bar_13);
-                  viz_bars[14] = id(viz_bar_14);
-                  viz_bars[15] = id(viz_bar_15);
-                }
-
-                // Per-band attack/decay smoothing (fast rise, slow fall).
-                static float viz_smooth[16] = {0.0f};
-                for (int b = 0; b < 16; b++) {
-                  float target = sqrtf(spec_bands[b]) * 300.0f;
-                  if (target > viz_smooth[b])
-                    viz_smooth[b] = viz_smooth[b] * 0.5f + target * 0.5f;
-                  else
-                    viz_smooth[b] = viz_smooth[b] * 0.85f;
-                  int h = (int) viz_smooth[b];
-                  if (h < 2) h = 2;
-                  if (h > 70) h = 70;   // strip is 75 px tall, 3 px top pad
-                  // Bottom-anchored: fixed x (15 + b*28), y grows upward.
-                  lv_obj_set_pos(viz_bars[b], 15 + b * 28, 75 - h - 3);
-                  lv_obj_set_height(viz_bars[b], h);
-                }
+            - lambda: 'id(spectrum_viz).tick();'

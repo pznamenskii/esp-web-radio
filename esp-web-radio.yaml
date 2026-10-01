@@ -125,7 +125,7 @@ external_components:
   - source:
       type: local
       path: esp-web-radio/custom_components
-    components: [spectrum_tap]
+    components: [spectrum_tap, spectrum_viz]
 
 # ---------------------------------------------------------------------------
 # Connectivity
@@ -225,7 +225,7 @@ interval:
       - logger.log:
           level: INFO
           tag: diag
-          format: "HEARTBEAT uptime=%d s heap_free=%.0f B heap_min_free=%.0f B frag=%.1f%% psram_free=%.0f B loop_time=%.0f"
+          format: "HEARTBEAT uptime=%d s heap_free=%.0f B heap_min_free=%.0f B frag=%.1f pct psram_free=%.0f B loop_time=%.0f"
           args:
             - 'id(uptime).has_state() ? (int) id(uptime).state : -1'
             - 'id(heap_free).has_state() ? id(heap_free).state : -1.0f'
