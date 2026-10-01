@@ -42,6 +42,12 @@ speaker:
   - platform: spectrum_tap
     id: spectrum_tap_speaker
     output_speaker: i2s_speaker
+    # Transparent passthrough, but the mixer/media_player chain validates the
+    # output speaker's stream properties (and inherits them into the mixer) -
+    # mirror i2s_speaker above: 16 bit, stereo, 48 kHz.
+    bits_per_sample: 16
+    num_channels: 2
+    sample_rate: 48000
 
   # Mixer: merges the media + announcement pipelines into one output
   - platform: mixer
