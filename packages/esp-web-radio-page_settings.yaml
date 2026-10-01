@@ -349,7 +349,7 @@ lvgl:
                   y: 9
                   width: 48
                   height: 30
-                  state: checked: True
+                  state: checked
                   on_value:
                     - lambda: 'id(visualizer_enabled) = x;'
                     - if:
