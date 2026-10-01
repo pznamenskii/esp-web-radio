@@ -20,6 +20,7 @@ substitutions:
   text_volume_minus:        "\U000F075E"
   text_volume_off:          "\U000F0581"
   text_restart:             "\U000F0709"   # mdi-restart (Settings: last reset reason row)
+  text_equalizer:           "\U000F01DC"   # mdi-equalizer (Settings: visualizer toggle row)
 
 # ---------------------------------------------------------------------------
 # Fonts. Station names can contain Cyrillic (e.g. "Радио Дача"), so each font's
@@ -47,6 +48,7 @@ font:
           "\U000F16BE",            # mdi-wifi-cog
           "\U000F057E",            # mdi-volume-high (reserved)
           "\U000F0709",            # mdi-restart (Settings: reset reason row)
+          "\U000F01DC",            # mdi-equalizer (Settings: visualizer toggle row)
         ]
   # nav20: inactive (smaller) glyphs for the bottom nav indicator; the focused
   # glyph reuses menu24 (24 px). Only the three nav icons are ever rendered, so

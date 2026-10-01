@@ -35,11 +35,27 @@ esphome:
     - lambda: 'id(boot_done) = true;'
     - script.execute: refresh_stations   # populate the Stations page for the current mode
     - script.execute: sync_volume_ui     # boot volume restore -> mirror + popup UI
-    # Info/Settings page: capture the volume restored at boot (component
-    # restore happens during setup, before on_boot, so volume_level is already
-    # the persisted value) and seed the info rows (startup volume, uptime,
-    # WiFi signal).
-    - lambda: 'id(startup_volume) = id(volume_level);'
+    # Boot volume OVERRIDE (Info/Settings page): apply the CONFIGURED
+    # `startup_volume` (persisted global, editable via the settings popup)
+    # instead of the component-restored live volume. Deliberate deviation from
+    # pure component-volume-restore - the user-configured boot level wins over
+    # whatever live volume the component persisted last session. Guarded so it
+    # only acts when the values differ; the resulting on_volume trigger then
+    # re-syncs the Now Playing popup slider/percent automatically.
+    - if:
+        condition:
+          lambda: 'return fabsf(id(startup_volume) - id(volume_level)) > 0.001f;'
+        then:
+          - media_player.volume_set:
+              id: esp_media_player
+              volume: !lambda 'return id(startup_volume);'
+    # Visualizer toggle: sync the Settings switch widget with the restored
+    # `visualizer_enabled` global. If this fires on_value it only re-writes the
+    # same value (player_playing is false at boot, so no show/hide side effect).
+    - lvgl.switch.update:
+        id: settings_sw_visualizer
+        value: !lambda 'return id(visualizer_enabled);'
+    # Seed the Info/Settings rows (startup volume, uptime, WiFi signal).
     - script.execute: refresh_settings_info
     # Bottom nav indicator starts focused on the home page.
     - lambda: 'id(current_page) = 0;'
