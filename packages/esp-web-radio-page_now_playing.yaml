@@ -562,9 +562,8 @@ lvgl:
                               condition:
                                 lambda: 'return id(volume_muted);'
                               then:
-                                - media_player.unmute: esp_media_player
-                              else:
-                                - media_player.mute: esp_media_player
+                                - media_player.unmute:
+                                    id: esp_media_player
                           - media_player.volume_down:
                               id: esp_media_player
                           - script.execute: show_volume_popup
@@ -588,21 +587,19 @@ lvgl:
                           # guarded HA push. Deliberately does NOT open the
                           # volume popup - muting is confirmed by the orange
                           # glyph (behavior unchanged from before the refactor).
-                          # Build-time check item: `media_player.volume_mute`
-                          # uses `state: ON/OFF`; if the installed ESPHome
-                          # expects `muted: true/false` instead, adapt both this
-                          # handler and the volume_slider handler below.
+                          # Native mute toggle via the media_player command
+                          # actions: media_player.mute / media_player.unmute
+                          # (there is no `volume_mute` action and the command
+                          # schema takes no `state` argument).
                           - if:
                               condition:
                                 lambda: 'return id(volume_muted);'
                               then:
-                                - media_player.volume_mute:
+                                - media_player.unmute:
                                     id: esp_media_player
-                                    state: OFF
                               else:
-                                - media_player.volume_mute:
+                                - media_player.mute:
                                     id: esp_media_player
-                                    state: ON
                         widgets:
                           - label:
                               id: mp_lbl_mute_icon
@@ -628,9 +625,8 @@ lvgl:
                               condition:
                                 lambda: 'return id(volume_muted);'
                               then:
-                                - media_player.volume_mute:
+                                - media_player.unmute:
                                     id: esp_media_player
-                                    state: OFF
                           - media_player.volume_up:
                               id: esp_media_player
                           - script.execute: show_volume_popup
@@ -676,9 +672,8 @@ lvgl:
                               condition:
                                 lambda: 'return x > 0 && id(volume_muted);'
                               then:
-                                - media_player.volume_mute:
+                                - media_player.unmute:
                                     id: esp_media_player
-                                    state: OFF
                           - media_player.volume_set:
                               id: esp_media_player
                               volume: !lambda 'return x / 100.0f;'

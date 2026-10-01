@@ -447,9 +447,8 @@ lvgl:
                         condition:
                           lambda: 'return x > 0 && id(volume_muted);'
                         then:
-                          - media_player.volume_mute:
+                          - media_player.unmute:
                               id: esp_media_player
-                              state: OFF
                     - media_player.volume_set:
                         id: esp_media_player
                         volume: !lambda 'return id(startup_volume);'
