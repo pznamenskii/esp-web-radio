@@ -710,7 +710,7 @@ lvgl:
 # (lvgl.is_paused).
 # ---------------------------------------------------------------------------
 spectrum_viz:
-  id: spectrum_viz
+  id: spectrum_viz_component
   # 16 bar widgets from the mp_visualizer strip below (geometry: strip
   # 472x75; bar w=22, pitch=28, x0=15). Bound lazily by the component on
   # first tick, so no ordering constraints against LVGL init.
@@ -742,4 +742,4 @@ interval:
               - not:
                   - lvgl.is_paused
           then:
-            - lambda: 'id(spectrum_viz).tick();'
+            - lambda: 'id(spectrum_viz_component).tick();'
