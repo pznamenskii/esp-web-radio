@@ -165,3 +165,32 @@ raise `viz_animation` interval (40 ms → 60 ms), or reduce LVGL work while play
 - `esphome/components/resampler/speaker/resampler_speaker.cpp` — `ResamplerSpeaker::start_()`, `resample_task`.
 - `esphome/components/i2s_audio/speaker/i2s_audio_speaker.cpp` — `play()` auto-start, `loop()` → `start_i2s_driver()`.
 - `esphome/components/i2s_audio/speaker/i2s_audio_speaker_standard.cpp` — `start_i2s_driver()` uses `audio_stream_info_` for clock/slot.
+
+---
+
+## 9. Follow-up: visualizer "first half always at maximum" (2026-10-07)
+
+**Symptom:** bars of bands 0–7 (~375 Hz – 3.75 kHz) permanently pinned at 70 px; only the upper bands visibly move.
+
+**Root cause:** gain saturation, not the frequency range. [`spectrum_viz.cpp`](../custom_components/spectrum_viz/spectrum_viz.cpp) used
+`target = sqrtf(spec_bands[b]) * 300.0f` on raw, unnormalized FFT power:
+
+- Full-scale sine on one bin: `|X_k| ≈ A/2 * sum(Hann) ≈ A * 64` (N=128) → `sqrt(power) * 300 ≈ 19200 * A`.
+- A bar hits the 70 px clamp already at `A ≈ 0.0036` (**−48 dBFS**). Any audible bass/melody pins the
+  energy-heavy low bands, and the 0.85/tick decay keeps them up for ~1 s. The upper bands (4–18 kHz) carry
+  less program energy, so they keep moving.
+
+**Fix applied in [`spectrum_viz.cpp`](../custom_components/spectrum_viz/spectrum_viz.cpp) `tick()`:**
+
+- Normalize: `amp = sqrtf(spec_bands[b]) / 64.0f` (per-band amplitude, 0..~1; full-scale tone reads ≈ −6 dBFS).
+- dB compression: `db = 20 * log10f(amp + 1e-5f)`, `height = 70 * (1 - db / -50.0f)`, clamped to [2, 70].
+- Attack 0.5 / decay 0.85 smoothing untouched.
+
+Expected spread on typical music: lows ~40–70 px, highs ~10–40 px; nothing pinned unless genuinely near
+0 dBFS. A pure upward range shift was explicitly **rejected**: it relocates the saturation instead of fixing it.
+
+**Validation log:** one `[VIZ] bars(px): <16 values>` line per 5 s (125 ticks × 40 ms), emitted only while the
+`viz_animation` interval actually runs (strip visible) — no spam when paused/idle. **Temporary:** remove
+`log_tick_` / `log_bands_` members (in `spectrum_viz.h`) and the `ESP_LOGI` block once confirmed.
+
+**Tuning knob:** `WINDOW_COHERENT_GAIN = 64.0f` → `32.0f` makes the display hotter (full-scale tone → 0 dBFS → 70 px).

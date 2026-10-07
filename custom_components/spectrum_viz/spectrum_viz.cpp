@@ -11,6 +11,8 @@ extern float spec_bands[16];
 namespace esphome {
 namespace spectrum_viz {
 
+static const char *const TAG = "spectrum_viz";
+
 bool SpectrumViz::resolve_bars() {
   bool ready = true;
   for (int i = 0; i < NUM_BARS; i++) {
@@ -39,10 +41,35 @@ void SpectrumViz::tick() {
   if (!resolve_bars())
     return;
 
+  // ── TEMPORARY validation log (remove once the new dB scale is confirmed) ──
+  // Prints the 16 rendered bar heights once per LOG_INTERVAL_TICKS ticks
+  // (40 ms/tick -> 5 s) and only while the animation interval is actually
+  // running, so the log stays quiet. Expected spread after the dB fix on
+  // typical music: lows ~40-70 px, highs ~10-40 px; nothing pinned at 70.
+  constexpr uint32_t LOG_INTERVAL_TICKS = 125;   // 125 * 40 ms = 5 s
+  constexpr float WINDOW_COHERENT_GAIN = 64.0f;  // sum of the Hann window (N=128)
+  log_tick_++;
+  bool should_log = (log_tick_ >= LOG_INTERVAL_TICKS);
+  if (should_log)
+    log_tick_ = 0;
+
   for (int b = 0; b < NUM_BARS; b++) {
+    // Normalize the raw FFT power into a per-band RMS amplitude (0..~1):
+    //   |X_k| of a full-scale sine == A/2 * sum(Hann) ~= A * 64
+    float amp = sqrtf(spec_bands[b]) / WINDOW_COHERENT_GAIN;
+
+    // dBFS compression mapped linearly over a 50 dB range: 0 dBFS -> 70 px,
+    // -50 dBFS -> 2 px. Keeps the energy-heavy low bands from pinning while
+    // the quieter high bands stay visible (fix for "first half always max").
+    float db = 20.0f * log10f(amp + 1e-5f);
+    float target = 70.0f * (1.0f - db / -50.0f);
+    if (target < 2.0f)
+      target = 2.0f;
+    if (target > 70.0f)
+      target = 70.0f;
+
     // Per-band attack/decay smoothing (fast rise, slow fall) - identical
-    // tuning to the original lambda (GAIN 300.0f, attack 0.5, decay 0.85).
-    float target = sqrtf(spec_bands[b]) * 300.0f;
+    // tuning to the original lambda (attack 0.5, decay 0.85).
     if (target > viz_smooth_[b])
       viz_smooth_[b] = viz_smooth_[b] * 0.5f + target * 0.5f;
     else
@@ -54,6 +81,16 @@ void SpectrumViz::tick() {
     if (h > 70)
       h = 70;  // strip is 75 px tall, 3 px top pad
     set_bar_height(b, h);
+    log_bands_[b] = (uint8_t) h;
+  }
+
+  if (should_log) {
+    ESP_LOGI(TAG, "[VIZ] bars(px): %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u", (unsigned) log_bands_[0],
+             (unsigned) log_bands_[1], (unsigned) log_bands_[2], (unsigned) log_bands_[3],
+             (unsigned) log_bands_[4], (unsigned) log_bands_[5], (unsigned) log_bands_[6],
+             (unsigned) log_bands_[7], (unsigned) log_bands_[8], (unsigned) log_bands_[9],
+             (unsigned) log_bands_[10], (unsigned) log_bands_[11], (unsigned) log_bands_[12],
+             (unsigned) log_bands_[13], (unsigned) log_bands_[14], (unsigned) log_bands_[15]);
   }
 }
 

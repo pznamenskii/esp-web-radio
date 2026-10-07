@@ -54,6 +54,12 @@ class SpectrumViz : public Component {
   lv_obj_t *bars_[NUM_BARS] = {nullptr};
   std::function<lv_obj_t *()> bar_getters_[NUM_BARS];
   float viz_smooth_[NUM_BARS] = {0.0f};
+
+  // TEMPORARY validation-log state (remove together with the [VIZ] log in
+  // tick() once the new dB scale is confirmed): tick counter for rate limiting
+  // (1 line per 5 s) and the last rendered bar heights for the log line.
+  uint32_t log_tick_{0};
+  uint8_t log_bands_[NUM_BARS] = {0};
 };
 
 }  // namespace spectrum_viz
