@@ -29,6 +29,7 @@ public:
     // ── Speaker: intercept play, delegate the rest ──
     size_t play(const uint8_t *data, size_t length) override {
         feed_fft_samples(data, length);
+        sync_output_stream_info_();
         log_stream_info_once_();
         return output_->play(data, length);
     }
@@ -36,13 +37,13 @@ public:
 #ifdef USE_ESP32
     size_t play(const uint8_t *data, size_t length, TickType_t ticks_to_wait) override {
         feed_fft_samples(data, length);
+        sync_output_stream_info_();
         log_stream_info_once_();
         return output_->play(data, length, ticks_to_wait);
     }
 #endif
 
     void start() override {
-        log_stream_info_once_();
         output_->set_audio_stream_info(this->audio_stream_info_);
         output_->start();
         this->state_ = speaker::STATE_RUNNING;
@@ -70,14 +71,34 @@ public:
     }
 
 private:
-    // ── DIAGNOSTIC (temporary, remove after root-cause validation) ──
-    // One-shot per boot: prints the stream info the tap believes it has vs. the
-    // stream info currently configured on the underlying i2s speaker.
-    //   EXPECTED:   tap stream: 2ch x 16bit @ 48000 | i2s output stream: 2ch x 16bit @ 48000
-    //   SUSPECTED:  tap stream: 2ch x 16bit @ 48000 | i2s output stream: 1ch x 16bit @ 16000
-    // The second case means the i2s DAC was never handed the mixer's stream info
-    // (it kept AudioStreamInfo's default 16 kHz mono) and start_i2s_driver()
-    // configured the PCM5102 at the wrong rate -> slow clicks/crackle.
+    // The mixer sets THIS speaker's stream info at runtime (MixerSpeaker::start()
+    // in ESPHome 2026.x: output_speaker_->set_audio_stream_info(...)), but never
+    // touches the underlying i2s speaker. The i2s speaker auto-starts from its own
+    // first play() using ITS OWN audio_stream_info_ (default 16 kHz mono), so
+    // without this sync the PCM5102 would be clocked at the wrong rate while the
+    // upstream chain delivers 48 kHz stereo -> slow clicks/crackle (validated by
+    // DIAG logs: tap 2ch@48000 vs i2s 1ch@16000). Push our info down whenever it
+    // differs; cheap because it only fires on an actual change.
+    void sync_output_stream_info_() {
+        if (output_ == nullptr)
+            return;
+        if (output_->get_audio_stream_info() != this->get_audio_stream_info()) {
+            const auto &mine = this->get_audio_stream_info();
+            ESP_LOGD("spectrum_tap", "Syncing output stream info -> %uch x %ubit @ %uHz",
+                     (unsigned) mine.get_channels(), (unsigned) mine.get_bits_per_sample(),
+                     (unsigned) mine.get_sample_rate());
+            output_->set_audio_stream_info(mine);
+        }
+    }
+
+    // One-shot per boot (fires on first play()): prints the stream info the tap
+    // believes it has vs. the stream info actually configured on the underlying
+    // i2s speaker. Call AFTER sync_output_stream_info_() so a healthy boot shows
+    // both sides equal, e.g.:
+    //   [DIAG] tap stream: 2ch x 16bit @ 48000Hz | i2s output stream: 2ch x 16bit @ 48000Hz
+    // If the i2s side ever shows the AudioStreamInfo default (1ch x 16bit @ 16000),
+    // the stream-info propagation to the DAC is broken again (see
+    // plans/troubleshooting-visualizer-audio-crackle.md).
     void log_stream_info_once_() {
         static bool logged = false;
         if (logged || output_ == nullptr)
