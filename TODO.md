@@ -37,6 +37,7 @@
 - [x] volume slider feels misplaced and does not react in "wifi only" mode; let's replace with "-" (volume-minus glyph), "mute" (volume-off glyph when active in orange accent, in gray accent when inactive) "+"  (volume-plus glyph) buttons and when - or + is pressed have a horizontal volume slider popup (disappear after 5 sec of inactivity)
 - [ ] Arc on boot page is not animated, re-design
 - [ ] AP conflicts with web server and requires authentication
+- [ ] Station name is not updated on now playing screen from "Выберите станцию" to selected station
 
 ### Remaining improvements
 
