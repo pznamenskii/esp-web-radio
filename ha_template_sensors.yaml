@@ -1,18 +1,35 @@
 - sensor:
 #список радиостанций
+# ── Music Assistant миграция ──────────────────────────────────────────────
+# URL-сенсоры теперь несут MA favorite-URI вида  library://radio/<favorite_uuid>
+# вместо media-source://radio_browser/<uuid>. Действует ТОЛЬКО при
+# ma_player_entity = MA-зеркало (см. README "Music Assistant") и при
+# установленном аддоне Music Assistant + интеграции music_assistant в HA.
+#
+# Как получить реальные UUID favorites:
+#   1) В MA UI (Music Assistant): Providers -> Radio Browser, найдите станцию и
+#      добавьте в избранное (звёздочка / Library -> Favorites).
+#   2) Проиграйте favorite через MA UI на любом плеере, затем в HA откройте
+#      Настройки -> Журнал (Logbook) и найдите запись media_player.play_media:
+#      в поле media_content_id будет ТОЧНЫЙ URI вида library://radio/<uuid>.
+#   3) Либо в HA: Разработчик -> Сервисы -> music_assistant.search, параметры
+#      query = имя станции, searchType = radio; в ответе будет поле uri.
+# После правки заново импортируйте файл в HA (Настройки -> Устройства и службы
+# -> Импорт элементов / или замените существующие шаблонные сенсоры).
+# ──────────────────────────────────────────────────────────────────────────
   - name: "Radio Station 1 Name"
     state: "Радио Дача"
   - name: "Radio Station 1 URL"
-    state: "media-source://radio_browser/e3b0102d-0db6-4655-92d6-e37652ddedca"
+    state: "library://radio/<favorite_uuid_1>"
   - name: "Radio Station 2 Name"
     state: "Авторадио"
   - name: "Radio Station 2 URL"
-    state: "media-source://radio_browser/5f182e63-9273-4694-b606-70c608a86f10"
+    state: "library://radio/<favorite_uuid_2>"
   - name: "Radio Station 3 Name"
     state: "Русское Радио"
   - name: "Radio Station 3 URL"
-    state: "media-source://radio_browser/033fe547-b71c-4ea0-8274-e6522444629c"
+    state: "library://radio/<favorite_uuid_3>"
   - name: "Radio Station 4 Name"
     state: "Наше Радио"
   - name: "Radio Station 4 URL"
-    state: "media-source://radio_browser/996ea893-621d-11e9-a622-52543be04c81"
+    state: "library://radio/<favorite_uuid_4>"

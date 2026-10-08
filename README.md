@@ -13,6 +13,7 @@ ESP32-S3 WiFi internet radio with a 480×320 LVGL touchscreen UI, I2S output to 
 - [Configuration & secrets](#configuration--secrets)
 - [Theming system](#theming-system)
 - [UI architecture & page bindings](#ui-architecture--page-bindings)
+- [Music Assistant](#music-assistant)
 - [Time sync & device modes](#time-sync--device-modes)
 - [Diagnostics & troubleshooting](#diagnostics--troubleshooting)
 - [Font strategy](#font-strategy)
@@ -133,8 +134,9 @@ esp-web-radio/
 │                                          #   PSRAM sensors, BOOT/heartbeat logs),
 │                                          #   globals, on_boot
 ├── ha_template_sensors.yaml               # Home Assistant-side template sensors defining
-│                                          #   4 station presets (Name + URL, radio_browser)
-│                                          #   — import into HA, consumed via the native API
+│                                          #   4 station presets (Name + MA favorite URI,
+│                                          #   library://radio/<uuid>) — import into HA,
+│                                          #   consumed via the native API
 ├── offline_stations.yaml                  # HA-side template sensors for the same 4 stations
 │                                          #   with DIRECT stream URLs — the no-HA fallback
 │                                          #   list; mirrored device-side in
@@ -280,7 +282,7 @@ Three swipeable pages (480×320 landscape, LVGL `rotation: 90`), declared under 
 
 - Dynamic 2×6 button grid (12 slots `st_btn_1`..`st_btn_12`). The `refresh_stations` script fills each slot's label from the HA `station_N_name` sensors while the API is connected, otherwise from the hardcoded `offline_station_N_name` substitutions in [`packages/esp-web-radio-offline_stations.yaml`](packages/esp-web-radio-offline_stations.yaml).
 - Empty slots stay hidden and the grid height is set to the number of visible rows × 56 px, so a vertical scrollbar appears automatically once more than 8 stations are active.
-- Pressing a station runs the `play_station` script: playback goes through Home Assistant while connected (the HA template sensors use `media-source://radio_browser/…` URLs that only HA can resolve) or through the native `media_player.play_media` action with the direct offline URL in no-HA mode; the page then returns to Now Playing.
+- Pressing a station runs the `play_station` script: while connected, playback is routed through Home Assistant to the Music Assistant mirror (`${ma_player_entity}`) using the MA favorite URI from the HA template sensors (`library://radio/<uuid>`, playable only via HA/MA — see [Music Assistant](#music-assistant)); in no-HA mode it uses the native `media_player.play_media` action with the direct offline URL; the page then returns to Now Playing.
 
 #### Info/Settings page (`page_settings`)
 
@@ -399,10 +401,74 @@ sensors were removed. See
 
 A `globals` entry `current_station` (int, initial `1`, no restore) tracks the active preset; the `${station_count}` substitution (default `4`) is the wrap modulus. All playback — the Now Playing prev/next buttons, the play/pause toggle, and every Stations-page button — funnels through the `play_station` script, which picks the URL source by mode:
 
-- **HA connected** — `homeassistant.action: media_player.play_media` with `station_1_url` … `station_4_url` (the HA template sensors use `media-source://radio_browser/…`, resolvable only by HA).
+- **HA connected** — `homeassistant.action: media_player.play_media` against the Music Assistant mirror (`${ma_player_entity}`) with `station_1_url` … `station_4_url` (the HA template sensors now carry MA favorite URIs `library://radio/<uuid>`, resolved by HA/MA) and `media_content_type: "music"`.
 - **no-HA (wifi_only)** — the native `media_player.play_media` action with the direct `offline_station_1_url` … `offline_station_4_url` values, and `mp_station_title` is filled from the offline station name.
 
 The station name sensors (`station_1_name` … `station_12_name`) feed the Stations page through the `refresh_stations` script (also re-run on boot, WiFi connect, and HA API connect/disconnect); slots 5–12 are declared but stay hidden until matching entities exist in Home Assistant.
+
+---
+
+## Music Assistant
+
+Online station playback is routed through **Music Assistant (MA)**: MA decodes any
+incoming codec (including AAC/HE-AAC, which the device's own decoders cannot play)
+into PCM and re-encodes it into one of the codecs the player supports
+(FLAC/MP3/OPUS/WAV), so the device always receives a stream it can decode.
+Playback commands target the **MA mirror** of the device player
+(`${ma_player_entity}`); metadata (`media_title` / `media_artist` /
+`media_image_url`) is read from that mirror; the audio itself still flows into
+`media_player.esp_media_player` — the device-side pipeline (decode → resample →
+mixer → spectrum_tap → I2S) is unchanged. The offline/no-HA path is untouched.
+
+### Setting up MA (HA side)
+
+1. Install the **Music Assistant add-on** on HAOS and the `music_assistant`
+   integration in HA (MA server ≥ 2.4; the MA Home Assistant plugin installs
+   automatically on HAOS).
+2. In MA UI add the player provider **"Home Assistant Media Players"** and select
+   `media_player.esp_media_player`.
+3. Add the **Radio Browser** music source.
+4. Create **favorites** for the stations (Radio Browser → add to library).
+5. Find the **MA mirror entity_id** (HA → Settings → Devices & services → Music
+   Assistant → `media_player.*` entities) and write it into `ma_player_entity` in
+   [`esp-web-radio.yaml`](esp-web-radio.yaml) — the default is
+   `media_player.esp_media_player`, i.e. the old direct behavior, until switched.
+6. Find the **favorite URIs** (HA Logbook after the first playback via MA UI, or
+   the `music_assistant.search` service) and write them into
+   [`ha_template_sensors.yaml`](ha_template_sensors.yaml); re-import the file in HA.
+
+### Station → URI mapping
+
+| Station | URI |
+|---|---|
+| Радио Дача | `library://radio/<favorite_uuid_1>` |
+| Авторадио | `library://radio/<favorite_uuid_2>` |
+| Русское Радио | `library://radio/<favorite_uuid_3>` |
+| Наше Радио | `library://radio/<favorite_uuid_4>` |
+
+### Codec
+
+The stream delivered to HA players defaults to **MP3** (up to 48 kHz/16 bit); MA
+decodes any input to PCM and encodes into the player codec, so the device always
+gets one of its supported codecs. The MA player setting "Output codec": **MP3** is
+the default and the fallback for flaky networks; **FLAC** is the recommended
+quality option (no generation loss — AAC → PCM → FLAC — and the device decodes
+FLAC natively; see the plan §3.3).
+
+### Metadata
+
+Metadata is read from the MA mirror (`${ma_player_entity}`); `player_state`
+stays on the original `media_player.esp_media_player` (the play/pause glyph is
+already driven by the native `on_play`/`on_pause`/`on_idle` triggers).
+
+### Limitations
+
+MA exposes no stable direct stream URLs — the URL sensors remain the play_media
+source (MA favorite URIs instead of radio_browser ones). Live radio streams carry
+no position/duration, so the progress bar stays hidden on radio.
+
+Full migration plan (rollout order, validation checklist, rollback): see
+[`plans/migration-music-assistant.md`](plans/migration-music-assistant.md).
 
 ---
 
@@ -412,7 +478,7 @@ The title-bar clock (`lbl_time` in the LVGL `top_layer`) is fed by two time sour
 
 | Device mode | Condition | Clock source | Stations list / playback |
 |---|---|---|---|
-| **online** | HA API connected (`ha_connected`) | `esptime` — `platform: homeassistant` | HA station names; playback via HA (`media-source://`) |
+| **online** | HA API connected (`ha_connected`) | `esptime` — `platform: homeassistant` | HA station names; playback via the MA mirror (`library://` favorite URIs) |
 | **wifi_only** | WiFi up, no HA API (`wifi_connected`) | `wifi_time` — `platform: sntp` (NTP-maintained local clock) | offline list (`offline_station_N_*`); native direct-URL playback |
 | **offline** | no WiFi (`wifi_connected == false`) | none — `lbl_time` hidden | AP setup page shown; no station list |
 

@@ -337,8 +337,11 @@ script:
 
   # ---------------------------------------------------------------------------
   # Play the station selected by the `current_station` global. Routing:
-  #   - HA connected: homeassistant.action play_media - required because the HA
-  #                   template sensors use media-source:// URLs only HA resolves.
+  #   - HA connected: homeassistant.action play_media against the Music Assistant
+  #                   mirror (${ma_player_entity}); the media_content_id comes
+  #                   from the HA template sensors (library://radio/<uuid>) with
+  #                   media_content_type "music". Audio still flows into the
+  #                   esp_media_player via the MA-served session stream.
   #   - no-HA mode:   native media_player.play_media with the direct
   #                   offline_station_N_url substitutions (no HA involved).
   # ---------------------------------------------------------------------------
@@ -352,7 +355,7 @@ script:
             - homeassistant.action:
                 action: media_player.play_media
                 data:
-                  entity_id: media_player.esp_media_player
+                  entity_id: ${ma_player_entity}
                   media_content_id: !lambda |-
                     int s = id(current_station);
                     if (s == 1) return id(station_1_url).state.c_str();
@@ -367,7 +370,7 @@ script:
                     if (s == 10) return id(station_10_url).state.c_str();
                     if (s == 11) return id(station_11_url).state.c_str();
                     return id(station_12_url).state.c_str();
-                  media_content_type: "audio/mpeg"
+                  media_content_type: "music"
           else:
             - media_player.play_media:
                 id: esp_media_player

@@ -204,10 +204,15 @@ text_sensor:
                 id: mp_lbl_play_icon
                 text: ${text_play}
 
-  # Station name (large page title)
+  # Station name (large page title) - metadata comes from the MA mirror
+  # (${ma_player_entity}). Rationale: while playback is controlled by Music
+  # Assistant, media_title/media_artist/media_image_url are populated on the MA
+  # mirror, not on the raw ESPHome entity (ICY injection is off). player_state
+  # (above) intentionally stays on media_player.esp_media_player - the play/pause
+  # glyph is already driven by the native on_play/on_pause/on_idle triggers.
   - platform: homeassistant
     id: now_playing
-    entity_id: media_player.esp_media_player
+    entity_id: ${ma_player_entity}
     attribute: media_title
     on_value:
       - lvgl.label.update:
@@ -217,7 +222,7 @@ text_sensor:
   # Artist (hidden when empty)
   - platform: homeassistant
     id: now_playing_artist
-    entity_id: media_player.esp_media_player
+    entity_id: ${ma_player_entity}
     attribute: media_artist
     on_value:
       - if:
@@ -234,7 +239,7 @@ text_sensor:
   # Track (hidden when empty)
   - platform: homeassistant
     id: now_playing_track
-    entity_id: media_player.esp_media_player
+    entity_id: ${ma_player_entity}
     attribute: media_title
     on_value:
       - if:
@@ -253,7 +258,7 @@ text_sensor:
   # a later roadmap item. Fallback attribute name: entity_picture.
   - platform: homeassistant
     id: now_playing_art
-    entity_id: media_player.esp_media_player
+    entity_id: ${ma_player_entity}
     attribute: media_image_url
     on_value:
       - if:

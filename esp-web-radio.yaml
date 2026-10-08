@@ -12,6 +12,13 @@ substitutions:
   ap_password_display: !secret ap_password   # shown on the AP setup page
   ap_url: "http://192.168.4.1"      # fallback AP URL - text on the AP setup page
   station_count: 4                  # station presets (1..N); raise when more are declared
+  # Music Assistant mirror of the device player. Created by the music_assistant
+  # integration when the player provider "Home Assistant Media Players" is
+  # configured in MA (see README "Music Assistant"). Find the real entity_id in
+  # HA: Settings -> Devices & services -> Music Assistant.
+  # Default = the direct ESPHome entity -> keeps today's behavior until the
+  # mirror is imported; MUST be switched to the mirror for playback through MA.
+  ma_player_entity: "media_player.esp_media_player"
 
 esphome:
   name: esp-web-radio
