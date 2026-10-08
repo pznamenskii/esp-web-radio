@@ -47,7 +47,7 @@ touchscreen:
     i2c_id: touchscreen_bus
     on_touch:
       - logger.log:
-          format: Touch at (%d, %d)
+          format: "[TCH] touch at (%d, %d)"
           args: [touch.x, touch.y]
       - if:
           condition: lvgl.is_paused
@@ -55,6 +55,14 @@ touchscreen:
             - light.turn_on: backlight    # instant light at touch-down
     on_release:       # safe input handoff: resume only after finger is up
       then:
+        # [TCH] diagnosis (TODO "reacts on touch instead of release"): the
+        # touchscreen core emits this trigger when a poll reports NO touch
+        # points. If this fires while the finger is still held down, the
+        # axs15231 driver is generating a false release (its `update_touches()`
+        # treats any poll with data[0] != 0 as "no touches"), and LVGL then sees
+        # a full press+release - i.e. CLICKED - at touch-down time. Kept
+        # permanently per the user's request for permanent diagnostic logs.
+        - logger.log: "[TCH] release"
         - if:
             condition: lvgl.is_paused
             then:

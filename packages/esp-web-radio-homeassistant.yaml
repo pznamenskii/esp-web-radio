@@ -294,33 +294,21 @@ text_sensor:
                 id: mp_lbl_play_icon
                 text: ${text_play}
 
-  # Station name (large page title) - metadata comes from the MA mirror
-  # (${ma_player_entity}). Rationale: while playback is controlled by Music
-  # Assistant, media_* attributes are populated on the MA mirror, not on the raw
-  # ESPHome entity (ICY injection is off). player_state (above) intentionally
-  # stays on media_player.esp_media_player - the play/pause glyph is already
-  # driven by the native on_play/on_pause/on_idle triggers.
-  #
-  # EMPIRICAL (on-device, MA radio): the mirror maps the ICY stream as
-  #   media_title = current song, media_artist = artist,
-  #   media_album_name = STATION NAME.
-  # So the page title reads media_album_name (the earlier media_title wiring
-  # showed the track name instead - the track label below reads media_title).
-  # Empty value (playback stopped) keeps the last station name on screen.
-  - platform: homeassistant
-    id: now_playing
-    entity_id: ${ma_player_entity}
-    attribute: media_album_name
-    on_value:
-      - if:
-          condition:
-            lambda: return x.length() > 0;
-          then:
-            - lvgl.label.update:
-                id: mp_station_title
-                text: !lambda return x.c_str();
+  # Station name (large page title): driven ONLY by our own `station_N_name`
+  # sensors via the `play_station` immediate update. The MA mirror's radio
+  # metadata proved unstable across streams (media_title / media_album_name
+  # swap between station and song as ICY updates arrive), so no MA attribute is
+  # a reliable station-name source and the old MA-driven title overwrite was
+  # removed. Known trade-off: when playback is started from the MA UI (not from
+  # the device), the title keeps the previous station name until the next
+  # device-initiated play. The MA mirror attributes are still used for
+  # artist/track/cover below. player_state (above) stays on
+  # media_player.esp_media_player - the play/pause glyph is already driven by
+  # the native on_play/on_pause/on_idle triggers.
 
-  # Artist (hidden when empty)
+  # Artist (hidden when empty) - from the MA mirror (${ma_player_entity}):
+  # while playback is controlled by Music Assistant the media_* attributes are
+  # populated there, not on the raw ESPHome entity.
   - platform: homeassistant
     id: now_playing_artist
     entity_id: ${ma_player_entity}
@@ -337,13 +325,12 @@ text_sensor:
           else:
             - lvgl.widget.hide: mp_now_playing_artist
 
-  # Track (hidden when empty). ⚠️ VERIFY ON DEVICE: for radio streams MA maps
-  # the ICY "Artist - Song" pair into media_artist + media_album_name (the
-  # station name stays in media_title), so reading media_title here would
-  # duplicate the page title. media_album_name is empty -> label stays hidden
-  # (graceful); if MA turns out to put the song elsewhere, remap this attribute.
-  # Track (hidden when empty). EMPIRICAL (on-device, MA radio): the current
-  # song arrives in media_title (see the station-name comment above).
+  # Track (hidden when empty or when it still equals the station title). MA
+  # radio: the mirror's media_title starts as the station name and is replaced
+  # by the ICY song info a few seconds into playback (streams without ICY keep
+  # the station name forever). Comparing against mp_station_title suppresses
+  # the stale station value; the label re-appears once real track metadata
+  # arrives.
   - platform: homeassistant
     id: now_playing_track
     entity_id: ${ma_player_entity}
@@ -351,7 +338,7 @@ text_sensor:
     on_value:
       - if:
           condition:
-            lambda: return x.length() > 0;
+            lambda: 'return x.length() > 0 && x != lv_label_get_text(id(mp_station_title));'
           then:
             - lvgl.label.update:
                 id: mp_lnow_playing_track

@@ -60,6 +60,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 1"
                     - lambda: 'id(current_station) = 1;'
                     - script.execute: play_station
                   widgets:
@@ -105,6 +106,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 2"
                     - lambda: 'id(current_station) = 2;'
                     - script.execute: play_station
                   widgets:
@@ -150,6 +152,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 3"
                     - lambda: 'id(current_station) = 3;'
                     - script.execute: play_station
                   widgets:
@@ -195,6 +198,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 4"
                     - lambda: 'id(current_station) = 4;'
                     - script.execute: play_station
                   widgets:
@@ -240,6 +244,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 5"
                     - lambda: 'id(current_station) = 5;'
                     - script.execute: play_station
                   widgets:
@@ -285,6 +290,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 6"
                     - lambda: 'id(current_station) = 6;'
                     - script.execute: play_station
                   widgets:
@@ -330,6 +336,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 7"
                     - lambda: 'id(current_station) = 7;'
                     - script.execute: play_station
                   widgets:
@@ -375,6 +382,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 8"
                     - lambda: 'id(current_station) = 8;'
                     - script.execute: play_station
                   widgets:
@@ -420,6 +428,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 9"
                     - lambda: 'id(current_station) = 9;'
                     - script.execute: play_station
                   widgets:
@@ -465,6 +474,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 10"
                     - lambda: 'id(current_station) = 10;'
                     - script.execute: play_station
                   widgets:
@@ -510,6 +520,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 11"
                     - lambda: 'id(current_station) = 11;'
                     - script.execute: play_station
                   widgets:
@@ -555,6 +566,7 @@ lvgl:
                   height: 52
                   pad_all: 0
                   on_click:
+                    - logger.log: "[UI] CLICKED station 12"
                     - lambda: 'id(current_station) = 12;'
                     - script.execute: play_station
                   widgets:

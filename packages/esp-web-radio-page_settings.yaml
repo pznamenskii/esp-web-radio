@@ -279,6 +279,7 @@ lvgl:
             height: 48
             pad_all: 0
             on_click:
+              - logger.log: "[UI] CLICKED startup volume row"
               - script.execute: show_settings_vol_popup
             widgets:
               - label:
@@ -352,6 +353,9 @@ lvgl:
                   state: 
                     checked: True
                   on_value:
+                    - logger.log:
+                        format: "[UI] visualizer switch -> %d"
+                        args: ['(int) x']
                     - lambda: 'id(visualizer_enabled) = x;'
                     - if:
                         condition:
@@ -435,6 +439,7 @@ lvgl:
                   value: 50
                   adv_hittest: true
                   on_release:
+                    - logger.log: "[UI] startup volume slider release"
                     # Store the dragged value (0..100 -> 0..1) in the persisted
                     # `startup_volume` global, then push it to the player right
                     # away via the native set_volume action so the user hears

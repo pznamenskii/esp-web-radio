@@ -459,6 +459,7 @@ lvgl:
                         on_click:
                           # previous STATION (wrap 1 -> station_count); URL source
                           # is chosen by the play_station script (HA vs offline)
+                          - logger.log: "[UI] CLICKED prev-station"
                           - lambda: 'id(current_station) = ((id(current_station) + ${station_count} - 2) % ${station_count}) + 1;'
                           - script.execute: play_station
                         widgets:
@@ -537,6 +538,7 @@ lvgl:
                         on_click:
                           # next STATION (wrap station_count -> 1); URL source
                           # is chosen by the play_station script (HA vs offline)
+                          - logger.log: "[UI] CLICKED next-station"
                           - lambda: 'id(current_station) = (id(current_station) % ${station_count}) + 1;'
                           - script.execute: play_station
                         widgets:
@@ -553,6 +555,7 @@ lvgl:
                         width: 40
                         height: 40
                         on_click:
+                          - logger.log: "[UI] CLICKED volume-down"
                           # Native step -5% (volume_increment: 0.05). Pure
                           # command - the on_volume trigger syncs slider +
                           # percent label. Works in HA and wifi-only mode.
@@ -591,6 +594,7 @@ lvgl:
                           # actions: media_player.mute / media_player.unmute
                           # (there is no `volume_mute` action and the command
                           # schema takes no `state` argument).
+                          - logger.log: "[UI] CLICKED mute"
                           - if:
                               condition:
                                 lambda: 'return id(volume_muted);'
@@ -617,6 +621,7 @@ lvgl:
                         width: 40
                         height: 40
                         on_click:
+                          - logger.log: "[UI] CLICKED volume-up"
                           # Native step +5% (volume_increment: 0.05). Pure
                           # command - the on_volume trigger syncs slider +
                           # percent label. If currently muted, unmute first,
@@ -664,6 +669,7 @@ lvgl:
                         value: 50
                         adv_hittest: true
                         on_release:
+                          - logger.log: "[UI] volume popup slider release"
                           # Apply the dragged value (0..100 -> 0..1) via the
                           # native set_volume action - the on_volume trigger
                           # syncs slider + percent label. Dragging above 0 also

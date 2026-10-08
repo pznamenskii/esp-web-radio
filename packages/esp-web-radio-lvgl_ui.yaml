@@ -77,6 +77,13 @@ script:
   # ---------------------------------------------------------------------------
   - id: update_nav_indicator
     then:
+      # [UI] permanent diagnostic (user request): every page-change site
+      # (swipe handlers, play_station, wifi.on_connect, exit_ap_mode) funnels
+      # through this script, so one log point covers all of them.
+      - logger.log:
+          format: "[UI] page change -> current_page=%d"
+          args:
+            - 'id(current_page)'
       - if:
           condition:
             lambda: 'return id(current_page) == 0;'
@@ -523,13 +530,6 @@ script:
                     if (s == 11) return id(station_11_url).state.c_str();
                     return id(station_12_url).state.c_str();
                   media_content_type: "music"
-            # Title fix (TODO "station name is not updated"): set the title
-            # immediately from the selected station's name sensor - waiting for
-            # the MA mirror's media_title attribute left the stale
-            # "Выбери радиостанцию" text on screen (media_title can lag behind
-            # the play command or be replaced by ICY metadata mid-stream). Same
-            # pattern as the offline branch below; the now_playing sensor
-            # refines the title afterwards when MA metadata arrives.
             - lvgl.label.update:
                 id: mp_station_title
                 text: !lambda |-
@@ -751,6 +751,7 @@ lvgl:
                   arc_color: ${color_accent}
                   arc_width: 16
           on_click:
+            - logger.log: "[UI] CLICKED boot_screen dismiss"
             - lvgl.widget.hide: boot_screen
       - obj:      # OTA popup
           id: ota_popup
