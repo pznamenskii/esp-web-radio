@@ -32,6 +32,8 @@ image:
     id: station_img_1
     url: "http://localhost/station_1.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -39,6 +41,8 @@ image:
     id: station_img_2
     url: "http://localhost/station_2.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -46,6 +50,8 @@ image:
     id: station_img_3
     url: "http://localhost/station_3.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -53,6 +59,8 @@ image:
     id: station_img_4
     url: "http://localhost/station_4.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -60,6 +68,8 @@ image:
     id: station_img_5
     url: "http://localhost/station_5.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -67,6 +77,8 @@ image:
     id: station_img_6
     url: "http://localhost/station_6.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -74,6 +86,8 @@ image:
     id: station_img_7
     url: "http://localhost/station_7.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -81,6 +95,8 @@ image:
     id: station_img_8
     url: "http://localhost/station_8.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -88,6 +104,8 @@ image:
     id: station_img_9
     url: "http://localhost/station_9.png"   # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -95,6 +113,8 @@ image:
     id: station_img_10
     url: "http://localhost/station_10.png"  # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -102,6 +122,8 @@ image:
     id: station_img_11
     url: "http://localhost/station_11.png"  # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
 
@@ -109,5 +131,7 @@ image:
     id: station_img_12
     url: "http://localhost/station_12.png"  # dead placeholder - never fetched
     format: png
+    type: rgb565
+    transparency: alpha_channel
     resize: 40x40
     update_interval: never
