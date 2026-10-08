@@ -21,8 +21,11 @@
 # issued for sensors that have a non-empty value (offline / no-URL stations
 # simply keep the tinted slot). Requires PSRAM for the decode/resize buffers
 # (octal PSRAM is configured in the main file); PNG support adds the lodepng
-# decoder to flash (http_request is auto-loaded by the platform).
+# decoder to flash. The `http_request:` component is REQUIRED by online_image
+# and is declared below (it is not auto-loaded in ESPHome 2026.9.1).
 # ==============================================================================
+
+http_request:
 
 image:
   - platform: online_image
