@@ -81,7 +81,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_1
-                              image: station_img_1
+                              src: station_img_1
                               x: 0
                               y: 0
                     - label:
@@ -126,7 +126,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_2
-                              image: station_img_2
+                              src: station_img_2
                               x: 0
                               y: 0
                     - label:
@@ -171,7 +171,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_3
-                              image: station_img_3
+                              src: station_img_3
                               x: 0
                               y: 0
                     - label:
@@ -216,7 +216,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_4
-                              image: station_img_4
+                              src: station_img_4
                               x: 0
                               y: 0
                     - label:
@@ -261,7 +261,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_5
-                              image: station_img_5
+                              src: station_img_5
                               x: 0
                               y: 0
                     - label:
@@ -306,7 +306,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_6
-                              image: station_img_6
+                              src: station_img_6
                               x: 0
                               y: 0
                     - label:
@@ -351,7 +351,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_7
-                              image: station_img_7
+                              src: station_img_7
                               x: 0
                               y: 0
                     - label:
@@ -396,7 +396,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_8
-                              image: station_img_8
+                              src: station_img_8
                               x: 0
                               y: 0
                     - label:
@@ -441,7 +441,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_9
-                              image: station_img_9
+                              src: station_img_9
                               x: 0
                               y: 0
                     - label:
@@ -486,7 +486,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_10
-                              image: station_img_10
+                              src: station_img_10
                               x: 0
                               y: 0
                     - label:
@@ -531,7 +531,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_11
-                              image: station_img_11
+                              src: station_img_11
                               x: 0
                               y: 0
                     - label:
@@ -576,7 +576,7 @@ lvgl:
                         widgets:
                           - image:
                               id: st_logo_pic_12
-                              image: station_img_12
+                              src: station_img_12
                               x: 0
                               y: 0
                     - label:
