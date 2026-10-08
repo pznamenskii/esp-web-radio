@@ -502,31 +502,38 @@ Full migration plan (rollout order, validation checklist, rollback): see
 
 ## Station logos & artwork
 
-The Stations page buttons carry **placeholder logo slots** (`st_logo_1..12`,
-40×40 accent-tinted rounded rects with the `mdi-radio` glyph from the existing
-`menu24` font — no new glyphs/codepoints). The name labels sit to the right of
-them; when real logos land, each placeholder `obj` is swapped for an
-`lvgl.image` without any layout change (the label shift is already in place).
-Two delivery options are on the table:
+Each Stations-page button carries a **logo slot** (`st_logo_1..12`, 40×40
+accent-tinted rounded rect) whose child is an `lvgl.image` fed by the built-in
+[`online_image`](https://esphome.io/components/online_image.html) component —
+12 stubs live in [`packages/esp-web-radio-station_images.yaml`](packages/esp-web-radio-station_images.yaml)
+(`station_img_1..12`: PNG, `resize: 40x40`, downloads only on demand via
+`set_url`; the compile-time URLs are dead placeholders that are never fetched).
+Until a logo downloads, the tinted slot itself is the placeholder; PNG
+transparency composites over it.
 
-1. **Compiled assets (recommended)** — the ESPHome `image:` component converts
-   PNG logos into C arrays baked into flash, referenced by `lvgl.image`
-   widgets. ≈3 KB per 40×40 RGB565 logo (≈40 KB for all 12), zero runtime
-   cost, works offline. Best for fixed per-station logos.
-2. **Runtime HTTP URLs (possible, more work)** — the device already speaks
-   HTTP, but LVGL can only render images from RAM (`lv_img_dsc`), so URL-based
-   logos need a custom component: HTTP fetch → PNG/JPEG decode → PSRAM buffer
-   → set the image source. URLs would arrive via new HA sensors (e.g.
-   `radio_station_N_img`); MA's local artwork endpoint (`media_image_url`,
-   already wired for the Now Playing `mp_now_playing_art` panel) is a natural
-   source for per-track cover art. Budget: a 40×40 RGB565 buffer is 3.2 KB per
-   slot (PSRAM headroom is ample), but decoding full-size logos on the fly is
-   CPU/RAM heavy — downscale server-side or pre-scale.
+**How logos are delivered** — the third station parameter in
+[`ha_template_sensors.yaml`](ha_template_sensors.yaml), `Radio Station N Image`:
 
-Web links alone are not enough: ESPHome's LVGL integration has no native
-network-image widget, so any URL-based logo/cover requires the custom fetch +
-decode component above (see also the "Station widget shall display station
-logo" roadmap item in TODO.md).
+- a path **relative to the HA config dir** (`www/config/radio-N.png` — HA maps
+  `/config/www/*` to `/local/*`), or
+- an **absolute http(s) URL** (any web resource, passed through as-is).
+
+`refresh_stations` converts relative paths to `<ha_url>/local/<path minus
+"www/">`, pushes them via `online_image.set_url` (immediate download), and
+re-runs when the `station_N_img` sensors receive values — no reflash needed to
+change a logo. Setup:
+
+1. Add `ha_url: "http://<ha-host>:8123"` to `secrets_radio.yaml` (HA base URL,
+   no trailing slash).
+2. Upload the PNGs to `/config/www/config/` (or put any web URLs into the
+   sensors) and re-import `ha_template_sensors.yaml` in HA.
+
+Notes: PNG decoding (lodepng) adds some flash; decode/resize buffers use PSRAM
+(a 40×40 RGB565 slot is 3.2 KB). MA's local artwork endpoint (`media_image_url`,
+already wired for the Now Playing `mp_now_playing_art` panel) remains the
+natural source for per-track cover art. A fully offline alternative — compiled
+`image:` assets baked into flash (≈3 KB per logo, zero runtime) — is possible
+but unnecessary while HA is the logo host.
 
 ---
 

@@ -335,6 +335,146 @@ script:
           if (rows < 1) rows = 1;
           lv_obj_set_height(id(st_grid), rows * 56);
 
+      # ── Station logo URLs (optional) → online_image.set_url ───────────────────
+      # Third station parameter ("Radio Station N Image" HA sensors): a path
+      # relative to the HA config dir ("www/..."). HA maps /config/www/* to
+      # /local/*, so the device builds <ha_url>/local/<path minus "www/"> and
+      # set_url downloads the PNG immediately (resized to the 40x40 slot).
+      # Unknown/empty sensors keep the tinted placeholder. Re-downloading on
+      # every refresh is accepted: the PNGs are small and local.
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_1_img).has_state() && id(station_1_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_1
+                url: !lambda |-
+                  std::string p = id(station_1_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_2_img).has_state() && id(station_2_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_2
+                url: !lambda |-
+                  std::string p = id(station_2_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_3_img).has_state() && id(station_3_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_3
+                url: !lambda |-
+                  std::string p = id(station_3_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_4_img).has_state() && id(station_4_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_4
+                url: !lambda |-
+                  std::string p = id(station_4_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_5_img).has_state() && id(station_5_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_5
+                url: !lambda |-
+                  std::string p = id(station_5_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_6_img).has_state() && id(station_6_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_6
+                url: !lambda |-
+                  std::string p = id(station_6_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_7_img).has_state() && id(station_7_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_7
+                url: !lambda |-
+                  std::string p = id(station_7_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_8_img).has_state() && id(station_8_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_8
+                url: !lambda |-
+                  std::string p = id(station_8_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_9_img).has_state() && id(station_9_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_9
+                url: !lambda |-
+                  std::string p = id(station_9_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_10_img).has_state() && id(station_10_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_10
+                url: !lambda |-
+                  std::string p = id(station_10_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_11_img).has_state() && id(station_11_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_11
+                url: !lambda |-
+                  std::string p = id(station_11_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+      - if:
+          condition:
+            lambda: 'return id(ha_connected) && id(station_12_img).has_state() && id(station_12_img).state.length() > 0;'
+          then:
+            - online_image.set_url:
+                id: station_img_12
+                url: !lambda |-
+                  std::string p = id(station_12_img).state;
+                  if (p.rfind("www/", 0) == 0) p.erase(0, 4);
+                  if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
+                  return std::string("${ha_url}") + "/local/" + p;
+
   # ---------------------------------------------------------------------------
   # Play the station selected by the `current_station` global. Routing:
   #   - HA connected: homeassistant.action play_media against the Music Assistant
@@ -352,6 +492,18 @@ script:
           condition:
             lambda: 'return id(ha_connected);'
           then:
+            # Permanent diagnostic (kept by request): every HA-routed playback
+            # command is logged with its station number and target entity, so
+            # "station selection does not play" reports are diagnosable straight
+            # from the device log. The two things to check against this line:
+            # the entity must be the MA MIRROR of this device, and the station
+            # number must match the tapped button.
+            - logger.log:
+                tag: diag
+                format: "play_station: HA play_media station=%d entity=%s"
+                args:
+                  - 'id(current_station)'
+                  - '"${ma_player_entity}"'
             - homeassistant.action:
                 action: media_player.play_media
                 data:
@@ -598,7 +750,7 @@ lvgl:
                 indicator:
                   arc_color: ${color_accent}
                   arc_width: 16
-          on_press:
+          on_click:
             - lvgl.widget.hide: boot_screen
       - obj:      # OTA popup
           id: ota_popup

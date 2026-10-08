@@ -15,12 +15,13 @@
 # The grid container height is set at runtime to rows*56, so the page shows a
 # vertical scrollbar whenever more than 8 stations are active.
 #
-# Each button carries a station-logo PLACEHOLDER slot (st_logo_N, 40x40
-# accent-tinted rounded rect with the mdi-radio glyph from the existing menu24
-# font - no new glyphs/codepoints). The name label is shifted right of it.
-# When real logos land, replace each placeholder obj with an lvgl.image
-# (delivery options documented in README "Station logos & artwork": compiled
-# ESPHome `image:` assets, or runtime HTTP via a custom fetch/decode component).
+# Each button carries a station-logo slot (st_logo_N, 40x40 accent-tinted
+# rounded rect) whose child is an lvgl.image fed by the online_image stub
+# `station_img_N` (packages/esp-web-radio-station_images.yaml). Until a PNG is
+# downloaded (URLs pushed by refresh_stations from the "Radio Station N Image"
+# HA sensors) the tinted slot itself is the placeholder. The name label is
+# shifted right of the slot. Delivery options: see README "Station logos &
+# artwork".
 # ==============================================================================
 
 lvgl:
@@ -58,7 +59,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 1;'
                     - script.execute: play_station
                   widgets:
@@ -78,11 +79,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_1
+                              image: station_img_1
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_1
                         x: 60
@@ -103,7 +104,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 2;'
                     - script.execute: play_station
                   widgets:
@@ -123,11 +124,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_2
+                              image: station_img_2
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_2
                         x: 60
@@ -148,7 +149,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 3;'
                     - script.execute: play_station
                   widgets:
@@ -168,11 +169,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_3
+                              image: station_img_3
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_3
                         x: 60
@@ -193,7 +194,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 4;'
                     - script.execute: play_station
                   widgets:
@@ -213,11 +214,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_4
+                              image: station_img_4
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_4
                         x: 60
@@ -238,7 +239,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 5;'
                     - script.execute: play_station
                   widgets:
@@ -258,11 +259,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_5
+                              image: station_img_5
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_5
                         x: 60
@@ -283,7 +284,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 6;'
                     - script.execute: play_station
                   widgets:
@@ -303,11 +304,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_6
+                              image: station_img_6
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_6
                         x: 60
@@ -328,7 +329,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 7;'
                     - script.execute: play_station
                   widgets:
@@ -348,11 +349,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_7
+                              image: station_img_7
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_7
                         x: 60
@@ -373,7 +374,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 8;'
                     - script.execute: play_station
                   widgets:
@@ -393,11 +394,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_8
+                              image: station_img_8
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_8
                         x: 60
@@ -418,7 +419,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 9;'
                     - script.execute: play_station
                   widgets:
@@ -438,11 +439,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_9
+                              image: station_img_9
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_9
                         x: 60
@@ -463,7 +464,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 10;'
                     - script.execute: play_station
                   widgets:
@@ -483,11 +484,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_10
+                              image: station_img_10
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_10
                         x: 60
@@ -508,7 +509,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 11;'
                     - script.execute: play_station
                   widgets:
@@ -528,11 +529,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_11
+                              image: station_img_11
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_11
                         x: 60
@@ -553,7 +554,7 @@ lvgl:
                   width: 224
                   height: 52
                   pad_all: 0
-                  on_press:
+                  on_click:
                     - lambda: 'id(current_station) = 12;'
                     - script.execute: play_station
                   widgets:
@@ -573,11 +574,11 @@ lvgl:
                         scrollbar_mode: "OFF"
                         clickable: false
                         widgets:
-                          - label:
-                              align: CENTER
-                              text: ${text_nav_stations}
-                              text_font: menu24
-                              text_color: ${color_accent}
+                          - image:
+                              id: st_logo_pic_12
+                              image: station_img_12
+                              x: 0
+                              y: 0
                     - label:
                         id: st_lbl_12
                         x: 60

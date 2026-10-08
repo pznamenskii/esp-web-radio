@@ -65,3 +65,35 @@
     state: "Retro FM"
   - name: "Radio Station 12 URL"
     state: "library://radio/9"
+  # ── Station images (optional) ─────────────────────────────────────────────
+  # Third parameter per station: a path relative to the HA config dir. HA maps
+  # /config/www/* to /local/*, so "www/config/radio-N.png" is served at
+  # http://<ha-host>:8123/local/config/radio-N.png. The device builds that URL
+  # from the `ha_url` secret and downloads the PNG via online_image (resized to
+  # the 40x40 slot). Upload the PNG to /config/www/config/ or adjust the paths;
+  # until the files exist the download fails and the tinted placeholder stays.
+  # ──────────────────────────────────────────────────────────────────────────
+  - name: "Radio Station 1 Image"
+    state: "www/config/radio-1.png"
+  - name: "Radio Station 2 Image"
+    state: "www/config/radio-2.png"
+  - name: "Radio Station 3 Image"
+    state: "www/config/radio-3.png"
+  - name: "Radio Station 4 Image"
+    state: "www/config/radio-4.png"
+  - name: "Radio Station 5 Image"
+    state: "www/config/radio-5.png"
+  - name: "Radio Station 6 Image"
+    state: "www/config/radio-6.png"
+  - name: "Radio Station 7 Image"
+    state: "www/config/radio-7.png"
+  - name: "Radio Station 8 Image"
+    state: "www/config/radio-8.png"
+  - name: "Radio Station 9 Image"
+    state: "www/config/radio-9.png"
+  - name: "Radio Station 10 Image"
+    state: "www/config/radio-10.png"
+  - name: "Radio Station 11 Image"
+    state: "www/config/radio-11.png"
+  - name: "Radio Station 12 Image"
+    state: "www/config/radio-12.png"

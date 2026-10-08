@@ -182,6 +182,96 @@ text_sensor:
     on_value:
       - script.execute: refresh_stations
 
+  # Station logo paths (third parameter of the station set, "Radio Station N
+  # Image" HA sensors): config-relative paths like "www/config/radio-N.png".
+  # refresh_stations converts them to <ha_url>/local/... URLs and pushes them
+  # into the online_image stubs (esp-web-radio-station_images.yaml); an empty
+  # or unknown value keeps the tinted placeholder slot. Re-running the refresh
+  # on value change makes late-arriving sensors download without a reconnect.
+  - platform: homeassistant
+    id: station_1_img
+    entity_id: sensor.radio_station_1_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_2_img
+    entity_id: sensor.radio_station_2_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_3_img
+    entity_id: sensor.radio_station_3_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_4_img
+    entity_id: sensor.radio_station_4_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_5_img
+    entity_id: sensor.radio_station_5_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_6_img
+    entity_id: sensor.radio_station_6_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_7_img
+    entity_id: sensor.radio_station_7_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_8_img
+    entity_id: sensor.radio_station_8_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_9_img
+    entity_id: sensor.radio_station_9_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_10_img
+    entity_id: sensor.radio_station_10_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_11_img
+    entity_id: sensor.radio_station_11_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
+  - platform: homeassistant
+    id: station_12_img
+    entity_id: sensor.radio_station_12_image
+    internal: true
+    on_value:
+      - script.execute: refresh_stations
+
   # Player state -> play/pause glyph on the central button (also mirrored by
   # the native media_player play-state triggers in esp-web-radio-audio.yaml;
   # both reflect the same truth).
@@ -206,18 +296,29 @@ text_sensor:
 
   # Station name (large page title) - metadata comes from the MA mirror
   # (${ma_player_entity}). Rationale: while playback is controlled by Music
-  # Assistant, media_title/media_artist/media_image_url are populated on the MA
-  # mirror, not on the raw ESPHome entity (ICY injection is off). player_state
-  # (above) intentionally stays on media_player.esp_media_player - the play/pause
-  # glyph is already driven by the native on_play/on_pause/on_idle triggers.
+  # Assistant, media_* attributes are populated on the MA mirror, not on the raw
+  # ESPHome entity (ICY injection is off). player_state (above) intentionally
+  # stays on media_player.esp_media_player - the play/pause glyph is already
+  # driven by the native on_play/on_pause/on_idle triggers.
+  #
+  # EMPIRICAL (on-device, MA radio): the mirror maps the ICY stream as
+  #   media_title = current song, media_artist = artist,
+  #   media_album_name = STATION NAME.
+  # So the page title reads media_album_name (the earlier media_title wiring
+  # showed the track name instead - the track label below reads media_title).
+  # Empty value (playback stopped) keeps the last station name on screen.
   - platform: homeassistant
     id: now_playing
     entity_id: ${ma_player_entity}
-    attribute: media_title
+    attribute: media_album_name
     on_value:
-      - lvgl.label.update:
-          id: mp_station_title
-          text: !lambda return x.c_str();
+      - if:
+          condition:
+            lambda: return x.length() > 0;
+          then:
+            - lvgl.label.update:
+                id: mp_station_title
+                text: !lambda return x.c_str();
 
   # Artist (hidden when empty)
   - platform: homeassistant
@@ -241,10 +342,12 @@ text_sensor:
   # station name stays in media_title), so reading media_title here would
   # duplicate the page title. media_album_name is empty -> label stays hidden
   # (graceful); if MA turns out to put the song elsewhere, remap this attribute.
+  # Track (hidden when empty). EMPIRICAL (on-device, MA radio): the current
+  # song arrives in media_title (see the station-name comment above).
   - platform: homeassistant
     id: now_playing_track
     entity_id: ${ma_player_entity}
-    attribute: media_album_name
+    attribute: media_title
     on_value:
       - if:
           condition:

@@ -278,7 +278,7 @@ lvgl:
             width: 448
             height: 48
             pad_all: 0
-            on_press:
+            on_click:
               - script.execute: show_settings_vol_popup
             widgets:
               - label:

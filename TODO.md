@@ -28,6 +28,11 @@
 
 ### Issues to fix
 
+- [x] Metadata on Now Playing is swapped under MA radio (title showed the track, track showed the station) — fixed: the mirror maps ICY as media_title=song, media_artist=artist, media_album_name=STATION NAME; `now_playing` now reads `media_album_name` (with an empty-value guard) and `now_playing_track` reads `media_title` (esp-web-radio-homeassistant.yaml)
+- [x] The whole UI reacts on touch instead of release — fixed: all LVGL button handlers switched from `on_press` to `on_click` (LV_EVENT_CLICKED fires on release, ignores scroll-away taps): 6 on Now Playing, 12 station buttons, settings volume row, boot-screen dismissal
+- [ ] Station selection from the device does not play (MA UI → this player works); the play button has nothing to resume while selection fails — `play_station` now logs `[diag] play_station: HA play_media station=<n> entity=<…>` on every command (kept permanently). Verify: (1) `ma_player_entity` in esp-web-radio.yaml is the MA MIRROR entity of this device; (2) reproduce the same call from HA Dev Tools → media_player.play_media (mirror entity, `library://radio/<id>`, music) — if it fails there too, the favorite URIs are wrong (get real ones via MA UI Logbook / `music_assistant.search`)
+- [ ] Stations 5–12 are not shown on the Stations page (only 4) — device side is correct (slots 5–12 stay hidden while their sensors are unknown); ACTION: import the updated `ha_template_sensors.yaml` into HA (12 template sensors must exist, check Dev Tools → States for `sensor.radio_station_5_name` … `sensor.radio_station_12_name`) — prev/next looks dead for the same reason (unknown name → title fallback keeps the old text, unknown URL → empty play_media)
+
 - [x] Glyphs are wrong - i.e. I see "steam app" instead of "play next"
 - [x] backlight does not light up when coming back from idle sleep
 - [x] after playback starts, touching pause button does not do anything
@@ -41,7 +46,7 @@
 
 ### Remaining improvements
 
-- [ ] Station widget shall display station logo — placeholder slots (`st_logo_1..12`, 40×40 accent-tinted) are in place on the Stations page buttons; delivery options (compiled ESPHome `image:` assets vs runtime HTTP via a custom fetch/decode component) are documented in README "Station logos & artwork"
+- [ ] Station widget shall display station logo — the wiring is DONE: `lvgl.image` slots (`st_logo_1..12`) fed by built-in `online_image` stubs (`station_img_1..12`, PNG resized to 40×40); URLs come from the third station parameter (`Radio Station N Image` sensors, config-relative `www/...` paths or absolute URLs) and are pushed by `refresh_stations` via `set_url` — just upload PNGs to `/config/www/config/` and add `ha_url` to secrets (README "Station logos & artwork")
 - [ ] artist and track identification/lookup
 - [ ] Offline stations list editable via the built-in web server
 - [ ] Dynamic WiFi and HA API connection status display (hidden icons if no connection; for wifi different icons depending on signal level)

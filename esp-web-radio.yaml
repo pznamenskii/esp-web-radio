@@ -21,6 +21,11 @@ substitutions:
   # Default = the direct ESPHome entity -> keeps today's behavior until the
   # mirror is imported; MUST be switched to the mirror for playback through MA.
   ma_player_entity: "media_player.esp_radio_ma"
+  # Home Assistant base URL (no trailing slash; add `ha_url:` to
+  # secrets_radio.yaml, e.g. "http://homeassistant.local:8123"). Used to turn
+  # the config-relative image paths from the "Radio Station N Image" HA sensors
+  # ("www/...") into downloadable URLs: <ha_url>/local/<path without "www/">.
+  ha_url: !secret ha_url
 
 esphome:
   name: esp-web-radio
@@ -114,6 +119,7 @@ packages:
   audio:          !include esp-web-radio/packages/esp-web-radio-audio.yaml
   homeassistant:  !include esp-web-radio/packages/esp-web-radio-homeassistant.yaml
   offline_stations: !include esp-web-radio/packages/esp-web-radio-offline_stations.yaml
+  station_images: !include esp-web-radio/packages/esp-web-radio-station_images.yaml
   lvgl_ui:        !include esp-web-radio/packages/esp-web-radio-lvgl_ui.yaml
   fonts:          !include esp-web-radio/packages/display-fonts.yaml
   colors:         !include esp-web-radio/packages/common-colors.yaml

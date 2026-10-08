@@ -1,0 +1,110 @@
+# ==============================================================================
+# station_images.yaml - optional per-station logo downloads (online_image)
+#
+# 12 online_image stubs, one per Stations-page button slot (st_logo_1..12 in
+# esp-web-radio-page_stations.yaml). Each slot renders as an accent-tinted
+# placeholder until a PNG is downloaded into it.
+#
+# Delivery: the third station parameter in ha_template_sensors.yaml -
+# "Radio Station N Image" (HA entity sensor.radio_station_N_image) - holds a
+# path relative to the HA config dir ("www/config/radio-N.png"; HA maps
+# /config/www/* to /local/*) or an absolute http(s) URL. `refresh_stations`
+# (esp-web-radio-lvgl_ui.yaml) converts it (<ha_url>/local/<path minus
+# "www/">, absolute URLs pass through) and pushes it via online_image.set_url,
+# which downloads immediately and renders through the lvgl.image child of the
+# slot; `resize` scales any source image to 40x40 and PNG transparency
+# composites over the placeholder background. The base URL comes from the
+# `ha_url` secret (see esp-web-radio.yaml substitutions).
+#
+# The compile-time URLs below are DEAD placeholders that are never fetched:
+# `update_interval: never` disables the polling download, and set_url is only
+# issued for sensors that have a non-empty value (offline / no-URL stations
+# simply keep the tinted slot). Requires PSRAM for the decode/resize buffers
+# (octal PSRAM is configured in the main file); PNG support adds the lodepng
+# decoder to flash (http_request is auto-loaded by the platform).
+# ==============================================================================
+
+image:
+  - platform: online_image
+    id: station_img_1
+    url: "http://localhost/station_1.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_2
+    url: "http://localhost/station_2.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_3
+    url: "http://localhost/station_3.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_4
+    url: "http://localhost/station_4.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_5
+    url: "http://localhost/station_5.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_6
+    url: "http://localhost/station_6.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_7
+    url: "http://localhost/station_7.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_8
+    url: "http://localhost/station_8.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_9
+    url: "http://localhost/station_9.png"   # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_10
+    url: "http://localhost/station_10.png"  # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_11
+    url: "http://localhost/station_11.png"  # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never
+
+  - platform: online_image
+    id: station_img_12
+    url: "http://localhost/station_12.png"  # dead placeholder - never fetched
+    format: png
+    resize: 40x40
+    update_interval: never

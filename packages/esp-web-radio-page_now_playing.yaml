@@ -456,7 +456,7 @@ lvgl:
                         y: 4
                         width: 40
                         height: 40
-                        on_press:
+                        on_click:
                           # previous STATION (wrap 1 -> station_count); URL source
                           # is chosen by the play_station script (HA vs offline)
                           - lambda: 'id(current_station) = ((id(current_station) + ${station_count} - 2) % ${station_count}) + 1;'
@@ -474,7 +474,7 @@ lvgl:
                         y: 0
                         width: 100
                         height: 40
-                        on_press:
+                        on_click:
                           # DBG (kept by request): log what this button does in each
                           # mode. ha=1 routes through HA; ha=0 (wifi-only) falls back
                           # to the native media_player actions below.
@@ -534,7 +534,7 @@ lvgl:
                         y: 4
                         width: 40
                         height: 40
-                        on_press:
+                        on_click:
                           # next STATION (wrap station_count -> 1); URL source
                           # is chosen by the play_station script (HA vs offline)
                           - lambda: 'id(current_station) = (id(current_station) % ${station_count}) + 1;'
@@ -552,7 +552,7 @@ lvgl:
                         y: 4
                         width: 40
                         height: 40
-                        on_press:
+                        on_click:
                           # Native step -5% (volume_increment: 0.05). Pure
                           # command - the on_volume trigger syncs slider +
                           # percent label. Works in HA and wifi-only mode.
@@ -580,7 +580,7 @@ lvgl:
                         y: 4
                         width: 40
                         height: 40
-                        on_press:
+                        on_click:
                           # Native mute toggle. Pure command - the on_mute /
                           # on_unmute triggers (esp-web-radio-audio.yaml) handle
                           # the glyph color, `dac_mute` hardware mute and the
@@ -616,7 +616,7 @@ lvgl:
                         y: 4
                         width: 40
                         height: 40
-                        on_press:
+                        on_click:
                           # Native step +5% (volume_increment: 0.05). Pure
                           # command - the on_volume trigger syncs slider +
                           # percent label. If currently muted, unmute first,
