@@ -236,11 +236,15 @@ text_sensor:
           else:
             - lvgl.widget.hide: mp_now_playing_artist
 
-  # Track (hidden when empty)
+  # Track (hidden when empty). ⚠️ VERIFY ON DEVICE: for radio streams MA maps
+  # the ICY "Artist - Song" pair into media_artist + media_album_name (the
+  # station name stays in media_title), so reading media_title here would
+  # duplicate the page title. media_album_name is empty -> label stays hidden
+  # (graceful); if MA turns out to put the song elsewhere, remap this attribute.
   - platform: homeassistant
     id: now_playing_track
     entity_id: ${ma_player_entity}
-    attribute: media_title
+    attribute: media_album_name
     on_value:
       - if:
           condition:

@@ -439,12 +439,25 @@ mixer → spectrum_tap → I2S) is unchanged. The offline/no-HA path is untouche
 
 ### Station → URI mapping
 
-| Station | URI |
-|---|---|
-| Радио Дача | `library://radio/<favorite_uuid_1>` |
-| Авторадио | `library://radio/<favorite_uuid_2>` |
-| Русское Радио | `library://radio/<favorite_uuid_3>` |
-| Наше Радио | `library://radio/<favorite_uuid_4>` |
+Values live in [`ha_template_sensors.yaml`](ha_template_sensors.yaml); `station_count`
+in [`esp-web-radio.yaml`](esp-web-radio.yaml) is `12` (offline fallback still covers only
+slots 1–4). The numeric library IDs below are the MA favorite IDs captured so far —
+verify each via the HA Logbook / `music_assistant.search` after setup:
+
+| # | Station | URI |
+|---|---|---|
+| 1 | Радио Дача | `library://radio/1` |
+| 2 | Радио Ваня | `library://radio/6` |
+| 3 | Наше Радио | `library://radio/2` |
+| 4 | Rock FM | `library://radio/8` |
+| 5 | Авторадио | `library://radio/16` |
+| 6 | Дорожное Радио | `library://radio/13` |
+| 7 | Радио Maximum | `library://radio/10` |
+| 8 | DFM | `library://radio/14` |
+| 9 | NRJ | `library://radio/12` |
+| 10 | Русское Радио | `library://radio/15` |
+| 11 | Ultra | `library://radio/17` |
+| 12 | Retro FM | `library://radio/9` |
 
 ### Codec
 
@@ -461,6 +474,21 @@ Metadata is read from the MA mirror (`${ma_player_entity}`); `player_state`
 stays on the original `media_player.esp_media_player` (the play/pause glyph is
 already driven by the native `on_play`/`on_pause`/`on_idle` triggers).
 
+- **Title** (`mp_station_title`) is additionally set *immediately* by the
+  `play_station` HA branch from the selected `station_N_name` sensor — the
+  mirror's `media_title` can lag behind the play command (fixes the old TODO
+  "station name is not updated"); the `now_playing` sensor refines it when MA
+  metadata arrives.
+- **Artist** (`media_artist`) and **cover presence** (`media_image_url` →
+  `mp_now_playing_art`) come straight from the mirror.
+- **Track** (`mp_lnow_playing_track`) reads `media_album_name`: for radio
+  streams MA keeps the station name in `media_title` and maps the ICY
+  "Artist - Song" pair into `media_artist` + `media_album_name`.
+  ⚠️ Verify on device; if MA exposes the song elsewhere, remap the
+  `now_playing_track` attribute in [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-homeassistant.yaml)
+  (an empty value just keeps the label hidden, so a wrong mapping degrades
+  gracefully).
+
 ### Limitations
 
 MA exposes no stable direct stream URLs — the URL sensors remain the play_media
@@ -469,6 +497,36 @@ no position/duration, so the progress bar stays hidden on radio.
 
 Full migration plan (rollout order, validation checklist, rollback): see
 [`plans/migration-music-assistant.md`](plans/migration-music-assistant.md).
+
+---
+
+## Station logos & artwork
+
+The Stations page buttons carry **placeholder logo slots** (`st_logo_1..12`,
+40×40 accent-tinted rounded rects with the `mdi-radio` glyph from the existing
+`menu24` font — no new glyphs/codepoints). The name labels sit to the right of
+them; when real logos land, each placeholder `obj` is swapped for an
+`lvgl.image` without any layout change (the label shift is already in place).
+Two delivery options are on the table:
+
+1. **Compiled assets (recommended)** — the ESPHome `image:` component converts
+   PNG logos into C arrays baked into flash, referenced by `lvgl.image`
+   widgets. ≈3 KB per 40×40 RGB565 logo (≈40 KB for all 12), zero runtime
+   cost, works offline. Best for fixed per-station logos.
+2. **Runtime HTTP URLs (possible, more work)** — the device already speaks
+   HTTP, but LVGL can only render images from RAM (`lv_img_dsc`), so URL-based
+   logos need a custom component: HTTP fetch → PNG/JPEG decode → PSRAM buffer
+   → set the image source. URLs would arrive via new HA sensors (e.g.
+   `radio_station_N_img`); MA's local artwork endpoint (`media_image_url`,
+   already wired for the Now Playing `mp_now_playing_art` panel) is a natural
+   source for per-track cover art. Budget: a 40×40 RGB565 buffer is 3.2 KB per
+   slot (PSRAM headroom is ample), but decoding full-size logos on the fly is
+   CPU/RAM heavy — downscale server-side or pre-scale.
+
+Web links alone are not enough: ESPHome's LVGL integration has no native
+network-image widget, so any URL-based logo/cover requires the custom fetch +
+decode component above (see also the "Station widget shall display station
+logo" roadmap item in TODO.md).
 
 ---
 

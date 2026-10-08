@@ -548,7 +548,7 @@ lvgl:
                     - button:
                         id: mp_btn_vol_down
                         styles: icon_button
-                        x: 342
+                        x: 332
                         y: 4
                         width: 40
                         height: 40
@@ -576,7 +576,7 @@ lvgl:
                     - button:
                         id: mp_btn_mute
                         styles: icon_button
-                        x: 386
+                        x: 376
                         y: 4
                         width: 40
                         height: 40
@@ -612,7 +612,7 @@ lvgl:
                     - button:
                         id: mp_btn_vol_up
                         styles: icon_button
-                        x: 430
+                        x: 420
                         y: 4
                         width: 40
                         height: 40

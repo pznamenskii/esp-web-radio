@@ -14,6 +14,13 @@
 # Geometry: 12 slots in a 2-col x 6-row grid (224x52 buttons, 56 px pitch).
 # The grid container height is set at runtime to rows*56, so the page shows a
 # vertical scrollbar whenever more than 8 stations are active.
+#
+# Each button carries a station-logo PLACEHOLDER slot (st_logo_N, 40x40
+# accent-tinted rounded rect with the mdi-radio glyph from the existing menu24
+# font - no new glyphs/codepoints). The name label is shifted right of it.
+# When real logos land, replace each placeholder obj with an lvgl.image
+# (delivery options documented in README "Station logos & artwork": compiled
+# ESPHome `image:` assets, or runtime HTTP via a custom fetch/decode component).
 # ==============================================================================
 
 lvgl:
@@ -55,11 +62,32 @@ lvgl:
                     - lambda: 'id(current_station) = 1;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_1
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_1
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -79,11 +107,32 @@ lvgl:
                     - lambda: 'id(current_station) = 2;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_2
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_2
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -103,11 +152,32 @@ lvgl:
                     - lambda: 'id(current_station) = 3;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_3
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_3
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -127,11 +197,32 @@ lvgl:
                     - lambda: 'id(current_station) = 4;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_4
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_4
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -151,11 +242,32 @@ lvgl:
                     - lambda: 'id(current_station) = 5;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_5
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_5
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -175,11 +287,32 @@ lvgl:
                     - lambda: 'id(current_station) = 6;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_6
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_6
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -199,11 +332,32 @@ lvgl:
                     - lambda: 'id(current_station) = 7;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_7
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_7
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -223,11 +377,32 @@ lvgl:
                     - lambda: 'id(current_station) = 8;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_8
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_8
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -247,11 +422,32 @@ lvgl:
                     - lambda: 'id(current_station) = 9;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_9
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_9
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -271,11 +467,32 @@ lvgl:
                     - lambda: 'id(current_station) = 10;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_10
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_10
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -295,11 +512,32 @@ lvgl:
                     - lambda: 'id(current_station) = 11;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_11
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_11
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT
@@ -319,11 +557,32 @@ lvgl:
                     - lambda: 'id(current_station) = 12;'
                     - script.execute: play_station
                   widgets:
+                    - obj:
+                        id: st_logo_12
+                        x: 12
+                        y: 6
+                        width: 40
+                        height: 40
+                        radius: 8
+                        bg_color: ${color_accent}
+                        bg_opa: 15%
+                        border_width: 1
+                        border_color: ${color_accent}
+                        border_opa: 40%
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        clickable: false
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: ${text_nav_stations}
+                              text_font: menu24
+                              text_color: ${color_accent}
                     - label:
                         id: st_lbl_12
-                        x: 12
+                        x: 60
                         y: 0
-                        width: 200
+                        width: 152
                         height: 52
                         text: ""
                         text_align: LEFT

@@ -371,6 +371,34 @@ script:
                     if (s == 11) return id(station_11_url).state.c_str();
                     return id(station_12_url).state.c_str();
                   media_content_type: "music"
+            # Title fix (TODO "station name is not updated"): set the title
+            # immediately from the selected station's name sensor - waiting for
+            # the MA mirror's media_title attribute left the stale
+            # "Выбери радиостанцию" text on screen (media_title can lag behind
+            # the play command or be replaced by ICY metadata mid-stream). Same
+            # pattern as the offline branch below; the now_playing sensor
+            # refines the title afterwards when MA metadata arrives.
+            - lvgl.label.update:
+                id: mp_station_title
+                text: !lambda |-
+                  int s = id(current_station);
+                  const char *name = nullptr;
+                  if (s == 1 && id(station_1_name).has_state()) name = id(station_1_name).state.c_str();
+                  else if (s == 2 && id(station_2_name).has_state()) name = id(station_2_name).state.c_str();
+                  else if (s == 3 && id(station_3_name).has_state()) name = id(station_3_name).state.c_str();
+                  else if (s == 4 && id(station_4_name).has_state()) name = id(station_4_name).state.c_str();
+                  else if (s == 5 && id(station_5_name).has_state()) name = id(station_5_name).state.c_str();
+                  else if (s == 6 && id(station_6_name).has_state()) name = id(station_6_name).state.c_str();
+                  else if (s == 7 && id(station_7_name).has_state()) name = id(station_7_name).state.c_str();
+                  else if (s == 8 && id(station_8_name).has_state()) name = id(station_8_name).state.c_str();
+                  else if (s == 9 && id(station_9_name).has_state()) name = id(station_9_name).state.c_str();
+                  else if (s == 10 && id(station_10_name).has_state()) name = id(station_10_name).state.c_str();
+                  else if (s == 11 && id(station_11_name).has_state()) name = id(station_11_name).state.c_str();
+                  else if (s == 12 && id(station_12_name).has_state()) name = id(station_12_name).state.c_str();
+                  if (name != nullptr && name[0] != '\0')
+                    return name;
+                  // Sensor not (yet) known - keep the current label text
+                  return lv_label_get_text(id(mp_station_title));
           else:
             - media_player.play_media:
                 id: esp_media_player

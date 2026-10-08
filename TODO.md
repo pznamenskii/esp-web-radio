@@ -37,11 +37,11 @@
 - [x] volume slider feels misplaced and does not react in "wifi only" mode; let's replace with "-" (volume-minus glyph), "mute" (volume-off glyph when active in orange accent, in gray accent when inactive) "+"  (volume-plus glyph) buttons and when - or + is pressed have a horizontal volume slider popup (disappear after 5 sec of inactivity)
 - [ ] Arc on boot page is not animated, re-design
 - [ ] AP conflicts with web server and requires authentication
-- [ ] Station name is not updated on now playing screen from "Выберите станцию" to selected station
+- [x] Station name is not updated on now playing screen from "Выбери станцию" to selected station (fixed: the `play_station` HA branch now sets `mp_station_title` immediately from the selected `station_N_name` sensor — the MA mirror's `media_title` can lag behind the play command or be replaced by ICY metadata mid-stream; the `now_playing` sensor still refines the title when MA metadata arrives)
 
 ### Remaining improvements
 
-- [ ] Station widget shall display station logo (from name>file mapping?)
+- [ ] Station widget shall display station logo — placeholder slots (`st_logo_1..12`, 40×40 accent-tinted) are in place on the Stations page buttons; delivery options (compiled ESPHome `image:` assets vs runtime HTTP via a custom fetch/decode component) are documented in README "Station logos & artwork"
 - [ ] artist and track identification/lookup
 - [ ] Offline stations list editable via the built-in web server
 - [ ] Dynamic WiFi and HA API connection status display (hidden icons if no connection; for wifi different icons depending on signal level)
