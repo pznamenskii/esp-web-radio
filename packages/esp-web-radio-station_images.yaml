@@ -1,192 +1,127 @@
 # ==============================================================================
-# station_images.yaml - optional per-station logo downloads (online_image)
+# station_images.yaml - station logos, statically compiled into the firmware
 #
-# 12 online_image stubs, one per Stations-page button slot (st_logo_1..12 in
-# esp-web-radio-page_stations.yaml). Each slot renders as an accent-tinted
-# placeholder until a PNG is downloaded into it.
+# Replaces the former online_image download pipeline. Rationale: two
+# abort-crashes (2026-10-08/09: TLS certificate verification abort + a script
+# restart storm) and, once those were fixed, 0.5-0.7 s main-loop stalls per
+# HTTPS fetch - online_image/http_request download IN the ESPHome loop task,
+# so every fetch froze the UI/visualizer. Downloads cannot be isolated from
+# YAML. Decision: logos are now build-time static assets - zero network code,
+# zero crash surface, zero stalls.
 #
-# Delivery: the third station parameter in ha_template_sensors.yaml -
-# "Radio Station N Image" (HA entity sensor.radio_station_N_image) - holds
-# EITHER a plain file name / sub-path relative to the HA /local/ root
-# ("radio-1.png" = the file /config/www/radio-1.png served at
-# <ha_url>/local/radio-1.png; "icons/radio-1.png" = /config/www/icons/radio-1.png)
-# OR an absolute http(s) URL. `refresh_stations` (esp-web-radio-lvgl_ui.yaml)
-# converts it (<ha_url>/local/<path>, absolute URLs pass through) and pushes it
-# via online_image.set_url - with `update: false`, i.e. WITHOUT downloading -
-# and the dedicated `refresh_station_images` script then fetches the images
-# ONE AT A TIME (1 s apart). A failure is logged by the on_error trigger below
-# and the tinted placeholder stays.
+# How it works:
+#   - The PNGs live in the repo `icons/` folder and are resized to 40x40 at
+#     BUILD time (flash-resident RGB565 + alpha, ~4.8 KB each).
+#   - The HA "Radio Station N Image" sensors (ha_template_sensors.yaml) report
+#     an icon FILE NAME, e.g. "radio/logo-radio-dacha.png".
+#   - The `logo_mapping` (string -> image) resolves that name to the compiled
+#     image at runtime (see the station_N_img sensors in
+#     esp-web-radio-homeassistant.yaml); an unknown/empty name hides the
+#     lvgl.image and keeps the accent-tinted placeholder slot.
 #
-# FAILSAFES (the 2026-10-08 build abort-crashed during a boot-time burst of 12
-# simultaneous HTTPS fetches, all 404):
-#   1. No download is ever started by set_url - the serialized
-#      `refresh_station_images` script is the only fetcher (max one HTTPS
-#      request in flight).
-#   2. `buffer_size` is kept small (16 KB instead of the 64 KB default; a
-#      40x40 RGB565 slot needs only ~5 KB).
-#   3. `on_error` logs and gives up - no retry storms; the placeholder stays.
-#
-# The compile-time URLs below are DEAD placeholders that are never fetched:
-# `update_interval: never` disables the polling download. Requires PSRAM for
-# the decode/resize buffers (octal PSRAM is configured in the main file); PNG
-# support adds the lodepng decoder to flash. The `http_request:` component is
-# REQUIRED by online_image and is declared below (it is not auto-loaded in
-# ESPHome 2026.9.1).
+# To change a logo: replace the file in icons/ (keep the name), update the HA
+# sensor if renamed - and reflash. Logos are static by design.
 # ==============================================================================
 
-# FAILGUARD (TLS): `verify_ssl: false` disables certificate verification. The
-# HA host is TLS-only (port 8123, TLS 1.3) and its certificate (internal CA,
-# CN=<domain>) can NEVER verify against an IP-based `ha_url` - and the 2026-10-09
-# log shows the device aborted (crash -> OTA rollback) inside that verification
-# path on the very first https fetch. Logos are non-critical: no certificate
-# verification, and a failed fetch is logged by on_error and keeps the
-# placeholder. A TLS handshake failure itself is a handled error (HTTP_CLIENT
-# connect failed -> on_error), not a crash.
-
-http_request:
-  verify_ssl: false
+mapping:
+  - id: logo_mapping
+    from: string
+    to: image
+    entries:
+      "radio/logo-radio-dacha.png": station_img_1
+      "radio/logo-radio-vanya.png": station_img_2
+      "radio/logo-nashe-radio.png": station_img_3
+      "radio/logo-rock-fm.png": station_img_4
+      "radio/logo-avtoradio.png": station_img_5
+      "radio/logo-dorozhnoe-radio.png": station_img_6
+      "radio/logo-maximum.png": station_img_7
+      "radio/logo-dfm.png": station_img_8
+      "radio/logo-radio-nrj.png": station_img_9
+      "radio/logo-russkoe-radio.png": station_img_10
+      "radio/logo-radio-ultra.png": station_img_11
+      "radio/logo-comedy-radio.png": station_img_12
 
 image:
-  - platform: online_image
+  - platform: file
+    file: icons/logo-radio-dacha.png
     id: station_img_1
-    url: "http://localhost/station_1.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384                      # failguard: small decode buffer
-    update_interval: never
-    on_error:                               # failguard: log and keep placeholder
-      - logger.log: "[IMG] station 1 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-radio-vanya.png
     id: station_img_2
-    url: "http://localhost/station_2.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 2 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-nashe-radio.png
     id: station_img_3
-    url: "http://localhost/station_3.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 3 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-rock-fm.png
     id: station_img_4
-    url: "http://localhost/station_4.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 4 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-avtoradio.png
     id: station_img_5
-    url: "http://localhost/station_5.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 5 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-dorozhnoe-radio.png
     id: station_img_6
-    url: "http://localhost/station_6.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 6 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-maximum.png
     id: station_img_7
-    url: "http://localhost/station_7.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 7 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-dfm.png
     id: station_img_8
-    url: "http://localhost/station_8.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 8 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-radio-nrj.png
     id: station_img_9
-    url: "http://localhost/station_9.png"   # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 9 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-russkoe-radio.png
     id: station_img_10
-    url: "http://localhost/station_10.png"  # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 10 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-radio-ultra.png
     id: station_img_11
-    url: "http://localhost/station_11.png"  # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 11 logo download failed - placeholder kept"
 
-  - platform: online_image
+  - platform: file
+    file: icons/logo-comedy-radio.png
     id: station_img_12
-    url: "http://localhost/station_12.png"  # dead placeholder - never fetched
-    format: png
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
-    buffer_size: 16384
-    update_interval: never
-    on_error:
-      - logger.log: "[IMG] station 12 logo download failed - placeholder kept"

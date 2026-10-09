@@ -17,17 +17,14 @@
 # После правки заново импортируйте файл в HA (Настройки -> Устройства и службы
 # -> Импорт элементов / или замените существующие шаблонные сенсоры).
 # ──────────────────────────────────────────────────────────────────────────
-  # ── Station images (optional) ─────────────────────────────────────────────
-  # Third parameter per station: EITHER a plain file name or a sub-path
-  # relative to the HA /local/ root ("radio-1.png" = the file
-  # /config/www/radio-1.png served at <ha_url>/local/radio-1.png;
-  # "icons/radio-1.png" = /config/www/icons/radio-1.png served at
-  # <ha_url>/local/icons/radio-1.png — the device prepends ${ha_url}/local/),
-  # OR a full http(s):// URL (used as-is instead of the HA host). A leading
-  # "www/" is tolerated and stripped for backward compatibility. Upload the
-  # logos to /config/www/ (or any /config/www/<subdir>/); until the files
-  # exist the download fails, the failure is logged and the tinted
-  # placeholder stays.
+  # ── Station images (static logos) ──────────────────────────────────────────
+  # Third parameter per station: the ICON FILE NAME as shipped in the repo
+  # `icons/` folder (see packages/esp-web-radio-station_images.yaml). The name
+  # is matched at runtime against the `logo_mapping` (string -> image); the
+  # logos are compiled into the firmware - the device never downloads
+  # anything. Keep the names in sync with the mapping entries; an unknown
+  # name keeps the tinted placeholder slot. NOTE: the file extension must be
+  # exact - "logo-maximum.png.png" (double .png) matches nothing.
   # ──────────────────────────────────────────────────────────────────────────
   - name: "Radio Station 1 Name"
     state: "Радио Дача"
@@ -70,7 +67,7 @@
   - name: "Radio Station 7 URL"
     state: "library://radio/10"
   - name: "Radio Station 7 Image"
-    state: "radio/logo-maximum.png.png"
+    state: "radio/logo-maximum.png"
   - name: "Radio Station 8 Name"
     state: "DFM"
   - name: "Radio Station 8 URL"

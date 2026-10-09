@@ -28,16 +28,6 @@ on_swipe_left:
             time: 300ms
         - lambda: 'id(current_page) = (id(current_page) + 1) % ${swipeable_page_count};'
         - script.execute: update_nav_indicator
-        # Lazy logo fetch (failsafe): station logo downloads NEVER run at boot -
-        # only here, when the Stations page is actually opened (current_page == 1).
-        # The refresh_station_images script itself debounces, serializes the
-        # fetches (1 s apart) and logs failures - a bad logo can never disturb
-        # boot, playback or the rest of the UI.
-        - if:
-            condition:
-              lambda: 'return id(current_page) == 1;'
-            then:
-              - script.execute: refresh_station_images
 
 on_swipe_right:
   - if:
@@ -51,9 +41,3 @@ on_swipe_right:
             time: 300ms
         - lambda: 'id(current_page) = (id(current_page) + ${swipeable_page_count} - 1) % ${swipeable_page_count};'
         - script.execute: update_nav_indicator
-        # Lazy logo fetch - see the on_swipe_left comment above.
-        - if:
-            condition:
-              lambda: 'return id(current_page) == 1;'
-            then:
-              - script.execute: refresh_station_images

@@ -16,12 +16,14 @@
 # vertical scrollbar whenever more than 8 stations are active.
 #
 # Each button carries a station-logo slot (st_logo_N, 40x40 accent-tinted
-# rounded rect) whose child is an lvgl.image fed by the online_image stub
-# `station_img_N` (packages/esp-web-radio-station_images.yaml). Until a PNG is
-# downloaded (URLs pushed by refresh_stations from the "Radio Station N Image"
-# HA sensors) the tinted slot itself is the placeholder. The name label is
-# shifted right of the slot. Delivery options: see README "Station logos &
-# artwork".
+# rounded rect) whose child is an lvgl.image fed by the STATIC image
+# `station_img_N` compiled from the repo icons/ folder
+# (packages/esp-web-radio-station_images.yaml). The "Radio Station N Image" HA
+# sensor reports the icon file name and the `logo_mapping` resolves it to the
+# compiled image at runtime (station_N_img sensors in
+# esp-web-radio-homeassistant.yaml); an unknown name hides the image and the
+# tinted slot itself is the placeholder. The name label is shifted right of
+# the slot. See README "Station logos & artwork".
 # ==============================================================================
 
 lvgl:

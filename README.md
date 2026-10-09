@@ -503,63 +503,43 @@ Full migration plan (rollout order, validation checklist, rollback): see
 ## Station logos & artwork
 
 Each Stations-page button carries a **logo slot** (`st_logo_1..12`, 40×40
-accent-tinted rounded rect) whose child is an `lvgl.image` fed by the built-in
-[`online_image`](https://esphome.io/components/online_image.html) component —
-12 stubs live in [`packages/esp-web-radio-station_images.yaml`](packages/esp-web-radio-station_images.yaml)
-(`station_img_1..12`: PNG, `resize: 40x40`, downloads only on demand via
-`set_url`; the compile-time URLs are dead placeholders that are never fetched).
-Until a logo downloads, the tinted slot itself is the placeholder; PNG
-transparency composites over it.
+accent-tinted rounded rect) whose child is an `lvgl.image` fed by **statically
+compiled images** — 12 entries live in
+[`packages/esp-web-radio-station_images.yaml`](packages/esp-web-radio-station_images.yaml)
+(`station_img_1..12`: PNG from the repo `icons/` folder, `resize: 40x40` at
+build time, RGB565 + alpha ≈ 4.8 KB each, flash-resident). Until a logo is
+resolved, the tinted slot itself is the placeholder; PNG transparency
+composites over it.
 
-**How logos are delivered** — the third station parameter in
-[`ha_template_sensors.yaml`](ha_template_sensors.yaml), `Radio Station N Image`,
-holds **either**:
+**Why static:** the former `online_image` download pipeline caused two
+abort-crashes (TLS certificate-verification abort against an IP-based
+`ha_url`, then a script-restart storm) and, once those were fixed, 0.5–0.7 s
+main-loop stalls per HTTPS fetch — `http_request`/`online_image` download in
+the ESPHome loop task, so every fetch froze the UI and the visualizer. Static
+assets remove the entire network path: no crash surface, no stalls, no TLS.
 
-- a **plain file name / sub-path relative to `/local/`** — `radio-1.png` (the
-  file `/config/www/radio-1.png`, served at `<ha_url>/local/radio-1.png`) or
-  `icons/radio-1.png` (the file `/config/www/icons/radio-1.png`), **or**
-- an **absolute http(s) URL** (any web resource, used as-is instead of the HA
-  host).
+**How logos are resolved** — the third station parameter in
+[`ha_template_sensors.yaml`](ha_template_sensors.yaml), `Radio Station N
+Image`, holds the **icon file name** exactly as shipped in `icons/` (e.g.
+`radio/logo-radio-dacha.png`). At runtime the `logo_mapping` (`mapping:`
+string → image in
+[`packages/esp-web-radio-station_images.yaml`](packages/esp-web-radio-station_images.yaml))
+resolves that name to the compiled image (the `station_N_img` HA-text-sensor
+handlers in [`packages/esp-web-radio-homeassistant.yaml`](packages/esp-web-radio-homeassistant.yaml)
+call `lvgl.image.update` with `src: {mapping: logo_mapping, value: <sensor
+value>}`). An unknown/empty name **hides** the image and keeps the tinted
+placeholder. Nothing is downloaded — the name is matched against the mapping.
 
-**Where to upload:** `/config/www/` (or any `/config/www/<subdir>/` you
-reference). Example: a sensor value of `icons/radio-1.png` needs the file at
-`/config/www/icons/radio-1.png`.
+To change a logo: replace the file in `icons/` (keep the name, keep the
+`mapping:` entry and the HA sensor in sync) and reflash — logos are static by
+design. Watch out for double extensions (`logo-maximum.png.png` matches
+nothing).
 
-**Failsafes** (two abort-crashes in the logo pipeline on 2026-10-08/09 — logos
-are strictly non-critical and must never take the device down):
-
-- **No downloads at boot.** `refresh_stations` converts relative paths to
-  `<ha_url>/local/<path>` (a leading `www/` is stripped for backward
-  compatibility) and pushes them via `online_image.set_url` with `update: false`
-  — no download starts from sensor updates or at startup.
-- **Fetch on demand only.** The `refresh_station_images` script
-  ([`packages/esp-web-radio-lvgl_ui.yaml`](packages/esp-web-radio-lvgl_ui.yaml))
-  is triggered ONLY when the Stations page is opened (swipe handler,
-  `current_page == 1`); it debounces (2 s), then fetches the images **one at a
-  time** (1 s apart — at most a single HTTPS/TLS request in flight).
-- **TLS hardening.** `http_request` runs with `verify_ssl: false`
-  ([`packages/esp-web-radio-station_images.yaml`](packages/esp-web-radio-station_images.yaml)):
-  the HA host is TLS-only and its certificate (internal CA, CN = domain) can
-  never verify against an IP-based `ha_url`; the 2026-10-09 crash aborted
-  inside that verification path on the first https fetch.
-- **Bounded resources, no retries.** 16 KB decode buffers (vs the 64 KB
-  default) and an `on_error` handler per image that logs
-  `[IMG] station N logo download failed` and keeps the tinted placeholder.
-
-No reflash is needed to change a logo. Setup:
-
-1. Add `ha_url: "https://<ha-host>:8123"` to `secrets_radio.yaml` (HA base URL,
-   no trailing slash; IP-based URLs are fine — certificate verification is
-   disabled).
-2. Upload the PNGs to `/config/www/` (or any `/config/www/<subdir>/`, or put
-   web URLs into the sensors) and re-import `ha_template_sensors.yaml` in HA.
-
-Notes: PNG decoding (lodepng) adds some flash; decode/resize buffers use PSRAM
-(a 40×40 RGB565 slot is 3.2 KB). MA's local artwork endpoint (`media_image_url`,
-already wired for the Now Playing `mp_now_playing_art` panel) remains the
-natural source for per-track cover art. A fully offline alternative — compiled
-`image:` assets baked into flash (≈3 KB per logo, zero runtime) — is possible
-but unnecessary while HA is the logo host.
+Notes: 12 compiled logos cost ≈ 58 KB flash (40×40 RGB565A8 ≈ 4.8 KB each).
+MA's local artwork endpoint (`media_image_url`, already wired for the Now
+Playing `mp_now_playing_art` panel) remains the natural source for per-track
+cover art if runtime artwork is ever wanted — but per-station logos stay
+static.
 
 ---
 

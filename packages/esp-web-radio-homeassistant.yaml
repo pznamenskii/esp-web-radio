@@ -182,95 +182,228 @@ text_sensor:
     on_value:
       - script.execute: refresh_stations
 
-  # Station logo paths (third parameter of the station set, "Radio Station N
-  # Image" HA sensors): config-relative paths like "www/config/radio-N.png".
-  # refresh_stations converts them to <ha_url>/local/... URLs and pushes them
-  # into the online_image stubs (esp-web-radio-station_images.yaml); an empty
-  # or unknown value keeps the tinted placeholder slot. Re-running the refresh
-  # on value change makes late-arriving sensors download without a reconnect.
+  # Station logos (third parameter of the station set, "Radio Station N Image"
+  # HA sensors): an icon FILE NAME, e.g. "radio/logo-radio-dacha.png". The
+  # logos are statically compiled into the firmware (icons/ folder +
+  # esp-web-radio-station_images.yaml) - no network fetches, no crash surface,
+  # no main-loop stalls. The `logo_mapping` (string -> image) resolves the
+  # reported file name to the compiled image at runtime; an unknown or empty
+  # name HIDES the lvgl.image and keeps the accent-tinted placeholder slot.
   - platform: homeassistant
     id: station_1_img
     entity_id: sensor.radio_station_1_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_1
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_1
+          else:
+            - lvgl.widget.hide: st_logo_pic_1
 
   - platform: homeassistant
     id: station_2_img
     entity_id: sensor.radio_station_2_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_2
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_2
+          else:
+            - lvgl.widget.hide: st_logo_pic_2
 
   - platform: homeassistant
     id: station_3_img
     entity_id: sensor.radio_station_3_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_3
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_3
+          else:
+            - lvgl.widget.hide: st_logo_pic_3
 
   - platform: homeassistant
     id: station_4_img
     entity_id: sensor.radio_station_4_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_4
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_4
+          else:
+            - lvgl.widget.hide: st_logo_pic_4
 
   - platform: homeassistant
     id: station_5_img
     entity_id: sensor.radio_station_5_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_5
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_5
+          else:
+            - lvgl.widget.hide: st_logo_pic_5
 
   - platform: homeassistant
     id: station_6_img
     entity_id: sensor.radio_station_6_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_6
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_6
+          else:
+            - lvgl.widget.hide: st_logo_pic_6
 
   - platform: homeassistant
     id: station_7_img
     entity_id: sensor.radio_station_7_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_7
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_7
+          else:
+            - lvgl.widget.hide: st_logo_pic_7
 
   - platform: homeassistant
     id: station_8_img
     entity_id: sensor.radio_station_8_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_8
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_8
+          else:
+            - lvgl.widget.hide: st_logo_pic_8
 
   - platform: homeassistant
     id: station_9_img
     entity_id: sensor.radio_station_9_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_9
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_9
+          else:
+            - lvgl.widget.hide: st_logo_pic_9
 
   - platform: homeassistant
     id: station_10_img
     entity_id: sensor.radio_station_10_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_10
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_10
+          else:
+            - lvgl.widget.hide: st_logo_pic_10
 
   - platform: homeassistant
     id: station_11_img
     entity_id: sensor.radio_station_11_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_11
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_11
+          else:
+            - lvgl.widget.hide: st_logo_pic_11
 
   - platform: homeassistant
     id: station_12_img
     entity_id: sensor.radio_station_12_image
     internal: true
     on_value:
-      - script.execute: refresh_stations
+      - if:
+          condition:
+            lambda: 'return id(logo_mapping).get(x) != nullptr;'
+          then:
+            - lvgl.image.update:
+                id: st_logo_pic_12
+                src:
+                  mapping: logo_mapping
+                  value: !lambda 'return x;'
+            - lvgl.widget.show: st_logo_pic_12
+          else:
+            - lvgl.widget.hide: st_logo_pic_12
 
   # Player state -> play/pause glyph on the central button (also mirrored by
   # the native media_player play-state triggers in esp-web-radio-audio.yaml;
