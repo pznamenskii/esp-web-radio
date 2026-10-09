@@ -43,6 +43,14 @@ globals:
     type: int
     restore_value: no
     initial_value: "0"
+  # Bitmask of station logos that got a real URL pushed by refresh_stations
+  # (bit N-1 = station N). Failguard: refresh_station_images only downloads
+  # images whose URL was actually set - the compile-time dead placeholder URLs
+  # ("http://localhost/station_N.png") are never fetched.
+  - id: logo_url_mask
+    type: int
+    restore_value: no
+    initial_value: "0"
 
 script:
   - id: update_clock
@@ -348,11 +356,16 @@ script:
       # /config/www/radio-1.png; "icons/radio-1.png" = /config/www/icons/...) or
       # an absolute http(s) URL. The device builds <ha_url>/local/<path> (a
       # leading "www/" is stripped for backward compatibility) and pushes it via
-      # set_url with `update: false` - NO download starts here. The actual
-      # fetches are serialized by the `refresh_station_images` script below
-      # (failguard: the 2026-10-08 build abort-crashed during a boot-time burst
-      # of 12 simultaneous HTTPS 404 fetches). Unknown/empty sensors keep the
-      # tinted placeholder.
+      # set_url with `update: false` - NO download starts here, and NOTHING is
+      # fetched at boot. The actual fetches run ONLY when the Stations page is
+      # opened (swipe_navigation.yaml triggers refresh_station_images on
+      # current_page == 1); the script debounces, downloads one image at a time
+      # (1 s apart) and logs failures via on_error. Failguards after two
+      # abort-crashes in the logo pipeline (2026-10-08/09): TLS certificate
+      # verification disabled (http_request verify_ssl: false - the HA cert
+      # cannot verify against an IP-based URL and the abort happened in the
+      # verification path), 16 KB decode buffers, no retry storms. Unknown /
+      # empty sensors keep the tinted placeholder.
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_1_img).has_state() && id(station_1_img).state.length() > 0;'
@@ -365,6 +378,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 0;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_2_img).has_state() && id(station_2_img).state.length() > 0;'
@@ -377,6 +391,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 1;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_3_img).has_state() && id(station_3_img).state.length() > 0;'
@@ -389,6 +404,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 2;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_4_img).has_state() && id(station_4_img).state.length() > 0;'
@@ -401,6 +417,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 3;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_5_img).has_state() && id(station_5_img).state.length() > 0;'
@@ -413,6 +430,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 4;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_6_img).has_state() && id(station_6_img).state.length() > 0;'
@@ -425,6 +443,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 5;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_7_img).has_state() && id(station_7_img).state.length() > 0;'
@@ -437,6 +456,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 6;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_8_img).has_state() && id(station_8_img).state.length() > 0;'
@@ -449,6 +469,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 7;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_9_img).has_state() && id(station_9_img).state.length() > 0;'
@@ -461,6 +482,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 8;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_10_img).has_state() && id(station_10_img).state.length() > 0;'
@@ -473,6 +495,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 9;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_11_img).has_state() && id(station_11_img).state.length() > 0;'
@@ -485,6 +508,7 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 10;'   # failguard: URL is set
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_12_img).has_state() && id(station_12_img).state.length() > 0;'
@@ -497,10 +521,8 @@ script:
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+            - lambda: 'id(logo_url_mask) |= 1 << 11;'   # failguard: URL is set
 
-      # Failguard: URLs above are set WITHOUT downloading; the serialized
-      # script performs the actual fetches one at a time.
-      - script.execute: refresh_station_images
 
   # ---------------------------------------------------------------------------
   # Failsafe logo downloader (TODO "image download failsafes"). Logo downloads
@@ -516,29 +538,87 @@ script:
   - id: refresh_station_images
     mode: restart
     then:
-      - component.update: station_img_1
+      # Debounce failguard: HA sends all 12 station sensors at once, and every
+      # `refresh_stations` run re-executes this script. Without the initial
+      # delay, each restart killed the in-flight download and restarted from
+      # station 1 (seen in the 2026-10-09 log: 12 aborted downloads in 200 ms).
+      # The delay lets the trigger storm settle; only the last pass survives.
+      - delay: 2s
+      # Each fetch is guarded by logo_url_mask: images whose URL was never set
+      # (no sensor value) keep the dead compile-time placeholder, which must
+      # never be fetched (failguard - the 2026-10-09 log showed placeholder
+      # downloads when the script ran before the sensor values arrived).
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 0)) != 0;'
+          then:
+            - component.update: station_img_1
       - delay: 1s
-      - component.update: station_img_2
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 1)) != 0;'
+          then:
+            - component.update: station_img_2
       - delay: 1s
-      - component.update: station_img_3
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 2)) != 0;'
+          then:
+            - component.update: station_img_3
       - delay: 1s
-      - component.update: station_img_4
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 3)) != 0;'
+          then:
+            - component.update: station_img_4
       - delay: 1s
-      - component.update: station_img_5
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 4)) != 0;'
+          then:
+            - component.update: station_img_5
       - delay: 1s
-      - component.update: station_img_6
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 5)) != 0;'
+          then:
+            - component.update: station_img_6
       - delay: 1s
-      - component.update: station_img_7
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 6)) != 0;'
+          then:
+            - component.update: station_img_7
       - delay: 1s
-      - component.update: station_img_8
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 7)) != 0;'
+          then:
+            - component.update: station_img_8
       - delay: 1s
-      - component.update: station_img_9
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 8)) != 0;'
+          then:
+            - component.update: station_img_9
       - delay: 1s
-      - component.update: station_img_10
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 9)) != 0;'
+          then:
+            - component.update: station_img_10
       - delay: 1s
-      - component.update: station_img_11
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 10)) != 0;'
+          then:
+            - component.update: station_img_11
       - delay: 1s
-      - component.update: station_img_12
+      - if:
+          condition:
+            lambda: 'return (id(logo_url_mask) & (1 << 11)) != 0;'
+          then:
+            - component.update: station_img_12
       - delay: 1s
 
   # ---------------------------------------------------------------------------

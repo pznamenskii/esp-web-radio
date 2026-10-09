@@ -525,23 +525,34 @@ holds **either**:
 reference). Example: a sensor value of `icons/radio-1.png` needs the file at
 `/config/www/icons/radio-1.png`.
 
-**Failsafes** (the 2026-10-08 build abort-crashed during a boot-time burst of
-12 simultaneous HTTPS fetches, all 404 — logos are strictly non-critical and
-must never take the device down): `refresh_stations` converts relative paths
-to `<ha_url>/local/<path>` (a leading `www/` is stripped for backward
-compatibility) and pushes them via `online_image.set_url` with `update: false`
-— **no download starts from sensor updates**. The dedicated
-`refresh_station_images` script ([`packages/esp-web-radio-lvgl_ui.yaml`](packages/esp-web-radio-lvgl_ui.yaml))
-then fetches the images **one at a time** (1 s apart, at most a single
-HTTPS/TLS request in flight); each image has a 16 KB decode buffer (vs the
-64 KB default) and an `on_error` handler ([`packages/esp-web-radio-station_images.yaml`](packages/esp-web-radio-station_images.yaml))
-that logs `[IMG] station N logo download failed` and keeps the tinted
-placeholder — no retry storms. No reflash is needed to change a logo. Setup:
+**Failsafes** (two abort-crashes in the logo pipeline on 2026-10-08/09 — logos
+are strictly non-critical and must never take the device down):
 
-1. Add `ha_url: "https://<ha-host>"` to `secrets_radio.yaml` (HA base URL,
-   no trailing slash).
-2. Upload the PNGs to `/config/www/` (or put any web URLs into the sensors)
-   and re-import `ha_template_sensors.yaml` in HA.
+- **No downloads at boot.** `refresh_stations` converts relative paths to
+  `<ha_url>/local/<path>` (a leading `www/` is stripped for backward
+  compatibility) and pushes them via `online_image.set_url` with `update: false`
+  — no download starts from sensor updates or at startup.
+- **Fetch on demand only.** The `refresh_station_images` script
+  ([`packages/esp-web-radio-lvgl_ui.yaml`](packages/esp-web-radio-lvgl_ui.yaml))
+  is triggered ONLY when the Stations page is opened (swipe handler,
+  `current_page == 1`); it debounces (2 s), then fetches the images **one at a
+  time** (1 s apart — at most a single HTTPS/TLS request in flight).
+- **TLS hardening.** `http_request` runs with `verify_ssl: false`
+  ([`packages/esp-web-radio-station_images.yaml`](packages/esp-web-radio-station_images.yaml)):
+  the HA host is TLS-only and its certificate (internal CA, CN = domain) can
+  never verify against an IP-based `ha_url`; the 2026-10-09 crash aborted
+  inside that verification path on the first https fetch.
+- **Bounded resources, no retries.** 16 KB decode buffers (vs the 64 KB
+  default) and an `on_error` handler per image that logs
+  `[IMG] station N logo download failed` and keeps the tinted placeholder.
+
+No reflash is needed to change a logo. Setup:
+
+1. Add `ha_url: "https://<ha-host>:8123"` to `secrets_radio.yaml` (HA base URL,
+   no trailing slash; IP-based URLs are fine — certificate verification is
+   disabled).
+2. Upload the PNGs to `/config/www/` (or any `/config/www/<subdir>/`, or put
+   web URLs into the sensors) and re-import `ha_template_sensors.yaml` in HA.
 
 Notes: PNG decoding (lodepng) adds some flash; decode/resize buffers use PSRAM
 (a 40×40 RGB565 slot is 3.2 KB). MA's local artwork endpoint (`media_image_url`,

@@ -34,7 +34,17 @@
 # ESPHome 2026.9.1).
 # ==============================================================================
 
+# FAILGUARD (TLS): `verify_ssl: false` disables certificate verification. The
+# HA host is TLS-only (port 8123, TLS 1.3) and its certificate (internal CA,
+# CN=<domain>) can NEVER verify against an IP-based `ha_url` - and the 2026-10-09
+# log shows the device aborted (crash -> OTA rollback) inside that verification
+# path on the very first https fetch. Logos are non-critical: no certificate
+# verification, and a failed fetch is logged by on_error and keeps the
+# placeholder. A TLS handshake failure itself is a handled error (HTTP_CLIENT
+# connect failed -> on_error), not a crash.
+
 http_request:
+  verify_ssl: false
 
 image:
   - platform: online_image
