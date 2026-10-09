@@ -11,7 +11,11 @@
 #
 # How it works:
 #   - The PNGs live in the repo `icons/` folder and are resized to 40x40 at
-#     BUILD time (flash-resident RGB565 + alpha, ~4.8 KB each).
+#     BUILD time (flash-resident RGB565 + alpha, ~4.8 KB each). The `file:`
+#     paths use `../icons/...` because they resolve against the ESPHome config
+#     directory and the package directory: this repo can sit either at the
+#     config root (local build) or in a subdirectory like
+#     /config/esphome/esp-web-radio/ (HA ESPHome Device Builder).
 #   - The HA "Radio Station N Image" sensors (ha_template_sensors.yaml) report
 #     an icon FILE NAME, e.g. "radio/logo-radio-dacha.png".
 #   - The `logo_mapping` (string -> image) resolves that name to the compiled
@@ -43,84 +47,84 @@ mapping:
 
 image:
   - platform: file
-    file: icons/logo-radio-dacha.png
+    file: ../icons/logo-radio-dacha.png
     id: station_img_1
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-radio-vanya.png
+    file: ../icons/logo-radio-vanya.png
     id: station_img_2
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-nashe-radio.png
+    file: ../icons/logo-nashe-radio.png
     id: station_img_3
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-rock-fm.png
+    file: ../icons/logo-rock-fm.png
     id: station_img_4
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-avtoradio.png
+    file: ../icons/logo-avtoradio.png
     id: station_img_5
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-dorozhnoe-radio.png
+    file: ../icons/logo-dorozhnoe-radio.png
     id: station_img_6
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-maximum.png
+    file: ../icons/logo-maximum.png
     id: station_img_7
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-dfm.png
+    file: ../icons/logo-dfm.png
     id: station_img_8
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-radio-nrj.png
+    file: ../icons/logo-radio-nrj.png
     id: station_img_9
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-russkoe-radio.png
+    file: ../icons/logo-russkoe-radio.png
     id: station_img_10
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-radio-ultra.png
+    file: ../icons/logo-radio-ultra.png
     id: station_img_11
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
 
   - platform: file
-    file: icons/logo-comedy-radio.png
+    file: ../icons/logo-comedy-radio.png
     id: station_img_12
     type: rgb565
     transparency: alpha_channel
