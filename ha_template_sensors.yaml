@@ -17,83 +17,87 @@
 # После правки заново импортируйте файл в HA (Настройки -> Устройства и службы
 # -> Импорт элементов / или замените существующие шаблонные сенсоры).
 # ──────────────────────────────────────────────────────────────────────────
+  # ── Station images (optional) ─────────────────────────────────────────────
+  # Third parameter per station: EITHER a plain file name or a sub-path
+  # relative to the HA /local/ root ("radio-1.png" = the file
+  # /config/www/radio-1.png served at <ha_url>/local/radio-1.png;
+  # "icons/radio-1.png" = /config/www/icons/radio-1.png served at
+  # <ha_url>/local/icons/radio-1.png — the device prepends ${ha_url}/local/),
+  # OR a full http(s):// URL (used as-is instead of the HA host). A leading
+  # "www/" is tolerated and stripped for backward compatibility. Upload the
+  # logos to /config/www/ (or any /config/www/<subdir>/); until the files
+  # exist the download fails, the failure is logged and the tinted
+  # placeholder stays.
+  # ──────────────────────────────────────────────────────────────────────────
   - name: "Radio Station 1 Name"
     state: "Радио Дача"
   - name: "Radio Station 1 URL"
     state: "library://radio/1"
+  - name: "Radio Station 1 Image"
+    state: "radio/logo-radio-dacha.png"
   - name: "Radio Station 2 Name"
     state: "Радио Ваня"
   - name: "Radio Station 2 URL"
     state: "library://radio/6"
+  - name: "Radio Station 2 Image"
+    state: "radio/logo-radio-vanya.png"    
   - name: "Radio Station 3 Name"
     state: "Наше Радио"
   - name: "Radio Station 3 URL"
     state: "library://radio/2"
+  - name: "Radio Station 3 Image"
+    state: "radio/logo-nashe-radio.png"
   - name: "Radio Station 4 Name"
     state: "Rock FM"
   - name: "Radio Station 4 URL"
     state: "library://radio/8"
+  - name: "Radio Station 4 Image"
+    state: "radio/logo-rock-fm.png"
   - name: "Radio Station 5 Name"
     state: "Авторадио"
   - name: "Radio Station 5 URL"
     state: "library://radio/16"
+  - name: "Radio Station 5 Image"
+    state: "radio/logo-avtoradio.png"
   - name: "Radio Station 6 Name"
     state: "Дорожное Радио"
   - name: "Radio Station 6 URL"
     state: "library://radio/13"
+  - name: "Radio Station 6 Image"
+    state: "radio/logo-dorozhnoe-radio.png"
   - name: "Radio Station 7 Name"
     state: "Радио Maximum"
   - name: "Radio Station 7 URL"
     state: "library://radio/10"
+  - name: "Radio Station 7 Image"
+    state: "radio/logo-maximum.png.png"
   - name: "Radio Station 8 Name"
     state: "DFM"
   - name: "Radio Station 8 URL"
     state: "library://radio/14"
+  - name: "Radio Station 8 Image"
+    state: "radio/logo-dfm.png"
   - name: "Radio Station 9 Name"
     state: "NRJ"
   - name: "Radio Station 9 URL"
     state: "library://radio/12"
+  - name: "Radio Station 9 Image"
+    state: "radio/logo-radio-nrj.png"
   - name: "Radio Station 10 Name"
     state: "Русское Радио"
   - name: "Radio Station 10 URL"
     state: "library://radio/15"
+  - name: "Radio Station 10 Image"
+    state: "radio/logo-russkoe-radio.png"
   - name: "Radio Station 11 Name"
     state: "Ultra"
   - name: "Radio Station 11 URL"
     state: "library://radio/17"
-  - name: "Radio Station 12 Name"
-    state: "Retro FM"
-  - name: "Radio Station 12 URL"
-    state: "library://radio/9"
-  # ── Station images (optional) ─────────────────────────────────────────────
-  # Third parameter per station: a path relative to the HA config dir. HA maps
-  # /config/www/* to /local/*, so "www/config/radio-N.png" is served at
-  # http://<ha-host>:8123/local/config/radio-N.png. The device builds that URL
-  # from the `ha_url` secret and downloads the PNG via online_image (resized to
-  # the 40x40 slot). Upload the PNG to /config/www/config/ or adjust the paths;
-  # until the files exist the download fails and the tinted placeholder stays.
-  # ──────────────────────────────────────────────────────────────────────────
-  - name: "Radio Station 1 Image"
-    state: "www/config/radio-1.png"
-  - name: "Radio Station 2 Image"
-    state: "www/config/radio-2.png"
-  - name: "Radio Station 3 Image"
-    state: "www/config/radio-3.png"
-  - name: "Radio Station 4 Image"
-    state: "www/config/radio-4.png"
-  - name: "Radio Station 5 Image"
-    state: "www/config/radio-5.png"
-  - name: "Radio Station 6 Image"
-    state: "www/config/radio-6.png"
-  - name: "Radio Station 7 Image"
-    state: "www/config/radio-7.png"
-  - name: "Radio Station 8 Image"
-    state: "www/config/radio-8.png"
-  - name: "Radio Station 9 Image"
-    state: "www/config/radio-9.png"
-  - name: "Radio Station 10 Image"
-    state: "www/config/radio-10.png"
   - name: "Radio Station 11 Image"
-    state: "www/config/radio-11.png"
+    state: "radio/logo-radio-ultra.png"
+  - name: "Radio Station 12 Name"
+    state: "Comedy Radio"
+  - name: "Radio Station 12 URL"
+    state: "library://radio/18"
   - name: "Radio Station 12 Image"
-    state: "www/config/radio-12.png"
+    state: "radio/logo-comedy-radio.png"

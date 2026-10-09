@@ -383,7 +383,7 @@ lvgl:
               # Hidden when the track value is empty (now_playing_track sensor).
               # Slot stays reserved with fixed dimensions (static layout, Fix 1).
               - label:
-                  id: mp_lnow_playing_track
+                  id: mp_now_playing_track
                   styles: text_muted
                   x: 16
                   y: 95

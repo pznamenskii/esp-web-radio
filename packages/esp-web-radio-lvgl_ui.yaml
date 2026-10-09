@@ -343,18 +343,23 @@ script:
           lv_obj_set_height(id(st_grid), rows * 56);
 
       # ── Station logo URLs (optional) → online_image.set_url ───────────────────
-      # Third station parameter ("Radio Station N Image" HA sensors): a path
-      # relative to the HA config dir ("www/..."). HA maps /config/www/* to
-      # /local/*, so the device builds <ha_url>/local/<path minus "www/"> and
-      # set_url downloads the PNG immediately (resized to the 40x40 slot).
-      # Unknown/empty sensors keep the tinted placeholder. Re-downloading on
-      # every refresh is accepted: the PNGs are small and local.
+      # Third station parameter ("Radio Station N Image" HA sensors): a plain
+      # file name / sub-path relative to the HA /local/ root ("radio-1.png" =
+      # /config/www/radio-1.png; "icons/radio-1.png" = /config/www/icons/...) or
+      # an absolute http(s) URL. The device builds <ha_url>/local/<path> (a
+      # leading "www/" is stripped for backward compatibility) and pushes it via
+      # set_url with `update: false` - NO download starts here. The actual
+      # fetches are serialized by the `refresh_station_images` script below
+      # (failguard: the 2026-10-08 build abort-crashed during a boot-time burst
+      # of 12 simultaneous HTTPS 404 fetches). Unknown/empty sensors keep the
+      # tinted placeholder.
       - if:
           condition:
             lambda: 'return id(ha_connected) && id(station_1_img).has_state() && id(station_1_img).state.length() > 0;'
           then:
             - online_image.set_url:
                 id: station_img_1
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_1_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -366,6 +371,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_2
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_2_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -377,6 +383,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_3
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_3_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -388,6 +395,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_4
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_4_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -399,6 +407,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_5
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_5_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -410,6 +419,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_6
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_6_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -421,6 +431,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_7
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_7_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -432,6 +443,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_8
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_8_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -443,6 +455,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_9
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_9_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -454,6 +467,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_10
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_10_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -465,6 +479,7 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_11
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_11_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
@@ -476,11 +491,55 @@ script:
           then:
             - online_image.set_url:
                 id: station_img_12
+                update: false   # failguard: downloads run in refresh_station_images
                 url: !lambda |-
                   std::string p = id(station_12_img).state;
                   if (p.rfind("www/", 0) == 0) p.erase(0, 4);
                   if (p.rfind("http", 0) == 0) return p;  // absolute URL - as-is
                   return std::string("${ha_url}") + "/local/" + p;
+
+      # Failguard: URLs above are set WITHOUT downloading; the serialized
+      # script performs the actual fetches one at a time.
+      - script.execute: refresh_station_images
+
+  # ---------------------------------------------------------------------------
+  # Failsafe logo downloader (TODO "image download failsafes"). Logo downloads
+  # NEVER start from `refresh_stations`/sensor updates: set_url runs with
+  # `update: false`, and this script fetches the images ONE AT A TIME with a
+  # 1 s gap - at most a single HTTPS/TLS request is in flight, so the logo
+  # pipeline cannot exhaust memory or starve the loop task (the 2026-10-08
+  # build abort-crashed during a boot-time burst of 12 simultaneous 404
+  # fetches). mode: restart - a re-refresh during a pass just restarts it.
+  # Errors are logged by the on_error triggers in station_images.yaml and the
+  # tinted placeholder stays. Kept permanently as a diagnostic log point.
+  # ---------------------------------------------------------------------------
+  - id: refresh_station_images
+    mode: restart
+    then:
+      - component.update: station_img_1
+      - delay: 1s
+      - component.update: station_img_2
+      - delay: 1s
+      - component.update: station_img_3
+      - delay: 1s
+      - component.update: station_img_4
+      - delay: 1s
+      - component.update: station_img_5
+      - delay: 1s
+      - component.update: station_img_6
+      - delay: 1s
+      - component.update: station_img_7
+      - delay: 1s
+      - component.update: station_img_8
+      - delay: 1s
+      - component.update: station_img_9
+      - delay: 1s
+      - component.update: station_img_10
+      - delay: 1s
+      - component.update: station_img_11
+      - delay: 1s
+      - component.update: station_img_12
+      - delay: 1s
 
   # ---------------------------------------------------------------------------
   # Play the station selected by the `current_station` global. Routing:

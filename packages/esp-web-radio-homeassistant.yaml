@@ -341,11 +341,11 @@ text_sensor:
             lambda: 'return x.length() > 0 && x != lv_label_get_text(id(mp_station_title));'
           then:
             - lvgl.label.update:
-                id: mp_lnow_playing_track
+                id: mp_now_playing_track
                 text: !lambda return x.c_str();
-            - lvgl.widget.show: mp_lnow_playing_track
+            - lvgl.widget.show: mp_now_playing_track
           else:
-            - lvgl.widget.hide: mp_lnow_playing_track
+            - lvgl.widget.hide: mp_now_playing_track
 
   # Album-art presence (media_image_url attribute) -> show/hide mp_now_playing_art.
   # The panel is a placeholder while art metadata exists; rendering the image is

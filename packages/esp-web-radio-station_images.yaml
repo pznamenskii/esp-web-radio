@@ -6,23 +6,32 @@
 # placeholder until a PNG is downloaded into it.
 #
 # Delivery: the third station parameter in ha_template_sensors.yaml -
-# "Radio Station N Image" (HA entity sensor.radio_station_N_image) - holds a
-# path relative to the HA config dir ("www/config/radio-N.png"; HA maps
-# /config/www/* to /local/*) or an absolute http(s) URL. `refresh_stations`
-# (esp-web-radio-lvgl_ui.yaml) converts it (<ha_url>/local/<path minus
-# "www/">, absolute URLs pass through) and pushes it via online_image.set_url,
-# which downloads immediately and renders through the lvgl.image child of the
-# slot; `resize` scales any source image to 40x40 and PNG transparency
-# composites over the placeholder background. The base URL comes from the
-# `ha_url` secret (see esp-web-radio.yaml substitutions).
+# "Radio Station N Image" (HA entity sensor.radio_station_N_image) - holds
+# EITHER a plain file name / sub-path relative to the HA /local/ root
+# ("radio-1.png" = the file /config/www/radio-1.png served at
+# <ha_url>/local/radio-1.png; "icons/radio-1.png" = /config/www/icons/radio-1.png)
+# OR an absolute http(s) URL. `refresh_stations` (esp-web-radio-lvgl_ui.yaml)
+# converts it (<ha_url>/local/<path>, absolute URLs pass through) and pushes it
+# via online_image.set_url - with `update: false`, i.e. WITHOUT downloading -
+# and the dedicated `refresh_station_images` script then fetches the images
+# ONE AT A TIME (1 s apart). A failure is logged by the on_error trigger below
+# and the tinted placeholder stays.
+#
+# FAILSAFES (the 2026-10-08 build abort-crashed during a boot-time burst of 12
+# simultaneous HTTPS fetches, all 404):
+#   1. No download is ever started by set_url - the serialized
+#      `refresh_station_images` script is the only fetcher (max one HTTPS
+#      request in flight).
+#   2. `buffer_size` is kept small (16 KB instead of the 64 KB default; a
+#      40x40 RGB565 slot needs only ~5 KB).
+#   3. `on_error` logs and gives up - no retry storms; the placeholder stays.
 #
 # The compile-time URLs below are DEAD placeholders that are never fetched:
-# `update_interval: never` disables the polling download, and set_url is only
-# issued for sensors that have a non-empty value (offline / no-URL stations
-# simply keep the tinted slot). Requires PSRAM for the decode/resize buffers
-# (octal PSRAM is configured in the main file); PNG support adds the lodepng
-# decoder to flash. The `http_request:` component is REQUIRED by online_image
-# and is declared below (it is not auto-loaded in ESPHome 2026.9.1).
+# `update_interval: never` disables the polling download. Requires PSRAM for
+# the decode/resize buffers (octal PSRAM is configured in the main file); PNG
+# support adds the lodepng decoder to flash. The `http_request:` component is
+# REQUIRED by online_image and is declared below (it is not auto-loaded in
+# ESPHome 2026.9.1).
 # ==============================================================================
 
 http_request:
@@ -35,7 +44,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384                      # failguard: small decode buffer
     update_interval: never
+    on_error:                               # failguard: log and keep placeholder
+      - logger.log: "[IMG] station 1 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_2
@@ -44,7 +56,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 2 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_3
@@ -53,7 +68,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 3 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_4
@@ -62,7 +80,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 4 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_5
@@ -71,7 +92,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 5 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_6
@@ -80,7 +104,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 6 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_7
@@ -89,7 +116,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 7 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_8
@@ -98,7 +128,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 8 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_9
@@ -107,7 +140,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 9 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_10
@@ -116,7 +152,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 10 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_11
@@ -125,7 +164,10 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 11 logo download failed - placeholder kept"
 
   - platform: online_image
     id: station_img_12
@@ -134,4 +176,7 @@ image:
     type: rgb565
     transparency: alpha_channel
     resize: 40x40
+    buffer_size: 16384
     update_interval: never
+    on_error:
+      - logger.log: "[IMG] station 12 logo download failed - placeholder kept"
